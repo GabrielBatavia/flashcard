@@ -368,6 +368,13 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                   <p className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-slate-100 leading-relaxed break-words whitespace-pre-wrap">
                     {backText}
                   </p>
+
+                  {currentCard.explanation && (
+                    <div className="mt-3.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-900/60 rounded-xl text-left text-xs text-indigo-900 dark:text-indigo-200">
+                      <span className="font-bold text-indigo-700 dark:text-indigo-400">💡 Pembahasan: </span>
+                      <span className="text-slate-700 dark:text-slate-300">{currentCard.explanation}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="text-center">

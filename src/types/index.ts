@@ -1,8 +1,10 @@
 export interface Flashcard {
   id: string;
-  front: string; // Question / Term
-  back: string;  // Answer / Definition
+  front: string; // Question / Term / Soal
+  back: string;  // Answer / Definition / Jawaban Benar
   hint?: string;
+  options?: string[]; // Multiple choice options (Pilihan Ganda A, B, C, D)
+  explanation?: string; // Pembahasan / Penjelasan soal kuis
   mastered?: boolean; // Learned status
   lastReviewed?: number; // timestamp
 }
@@ -26,6 +28,7 @@ export interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  explanation?: string;
   userAnswer?: string;
   isCorrect?: boolean;
 }

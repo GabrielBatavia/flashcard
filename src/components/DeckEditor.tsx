@@ -181,10 +181,10 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
           </div>
           <div>
             <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              Punya Data JSON dari ChatGPT?
+              Punya Data JSON (Flashcard atau Soal Kuis)?
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Isi otomatis judul, kategori, dan seluruh kartu materi langsung dari teks atau file JSON.
+              Isi otomatis judul, kategori, serta seluruh kartu dan soal pilihan ganda dari file atau teks JSON.
             </p>
           </div>
         </div>
@@ -343,9 +343,16 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
             className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                #{idx + 1}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                  #{idx + 1}
+                </span>
+                {card.options && card.options.length >= 2 && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    🎯 Kuis ({card.options.length} Opsi)
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => handleDeleteCard(card.id)}
@@ -395,6 +402,33 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
                 className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+
+            {card.options && card.options.length >= 2 && (
+              <div className="text-[11px] bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-1">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Pilihan Jawaban Kuis:</span>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {card.options.map((opt, oIdx) => (
+                    <span
+                      key={oIdx}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${
+                        opt === card.back
+                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700'
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {String.fromCharCode(65 + oIdx)}. {opt} {opt === card.back && '✓'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {card.explanation && (
+              <div className="text-[11px] bg-indigo-50/50 dark:bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-slate-700 dark:text-slate-300">
+                <strong className="text-indigo-700 dark:text-indigo-400">Pembahasan: </strong>
+                {card.explanation}
+              </div>
+            )}
           </div>
         ))}
       </div>

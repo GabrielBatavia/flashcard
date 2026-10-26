@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { 
   ArrowLeft, CheckCircle2, XCircle, RotateCcw, 
-  Flame, BookOpen, AlertCircle, ArrowRight 
+  Flame, BookOpen, AlertCircle, ArrowRight, HelpCircle 
 } from 'lucide-react';
 import type { Deck, QuizQuestion, QuizResult } from '../types';
 import { soundManager } from '../utils/sound';
@@ -35,19 +35,28 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
     const shuffledCards = [...sourceCards].sort(() => Math.random() - 0.5);
 
     return shuffledCards.map(card => {
-      // Pick 3 distractors from all deck cards
-      const otherCards = deck.cards.filter(c => c.id !== card.id);
-      const shuffledOthers = [...otherCards].sort(() => Math.random() - 0.5);
-      const distractors = shuffledOthers.slice(0, 3).map(c => c.back);
+      let options: string[] = [];
 
-      // Combine with correct answer & shuffle
-      const options = [card.back, ...distractors].sort(() => Math.random() - 0.5);
+      // If card already has dedicated quiz options (e.g. from quiz JSON import)
+      if (Array.isArray(card.options) && card.options.length >= 2) {
+        const unique = Array.from(new Set([card.back, ...card.options]));
+        options = unique.sort(() => Math.random() - 0.5);
+      } else {
+        // Pick 3 distractors from other cards in the deck
+        const otherCards = deck.cards.filter(c => c.id !== card.id);
+        const shuffledOthers = [...otherCards].sort(() => Math.random() - 0.5);
+        const distractors = shuffledOthers.slice(0, 3).map(c => c.back);
+
+        // Combine with correct answer & shuffle
+        options = [card.back, ...distractors].sort(() => Math.random() - 0.5);
+      }
 
       return {
         cardId: card.id,
         question: card.front,
         correctAnswer: card.back,
         options,
+        explanation: card.explanation || card.hint,
       };
     });
   }, [deck.cards]);
@@ -303,6 +312,14 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
                     <span className="font-bold">Jawaban yang Benar:</span> {q.correctAnswer}
                   </div>
                 </div>
+                {q.explanation && (
+                  <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 flex items-start gap-2 border border-indigo-100 dark:border-indigo-900/50">
+                    <HelpCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-indigo-500" />
+                    <div>
+                      <span className="font-bold">Pembahasan:</span> {q.explanation}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -411,6 +428,19 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
             );
           })}
         </div>
+
+        {/* Explanation / Pembahasan after answering */}
+        {isAnswerSubmitted && currentQ?.explanation && (
+          <div className="mt-3.5 p-3.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl text-xs text-indigo-950 dark:text-indigo-200 animate-fadeIn space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-indigo-700 dark:text-indigo-400">
+              <HelpCircle className="w-4 h-4 text-indigo-500 shrink-0" />
+              <span>Pembahasan Soal:</span>
+            </div>
+            <p className="leading-relaxed text-[11px] sm:text-xs text-slate-700 dark:text-slate-300">
+              {currentQ.explanation}
+            </p>
+          </div>
+        )}
 
         {/* Bottom Continue / Next Button */}
         <div className="mt-5">

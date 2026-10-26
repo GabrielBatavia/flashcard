@@ -5,6 +5,33 @@ const STORAGE_KEY_DECKS = 'flashquiz_decks_v1';
 const STORAGE_KEY_HISTORY = 'flashquiz_quiz_history_v1';
 const STORAGE_KEY_THEME = 'flashquiz_theme_mode';
 
+export const SAMPLE_QUIZ_JSON = `{
+  "title": "Kuis Cerdas Cermat",
+  "description": "Latihan soal pilihan ganda sains dan pengetahuan umum",
+  "category": "Pengetahuan Umum",
+  "color": "from-indigo-500 to-purple-600",
+  "questions": [
+    {
+      "question": "Apa ibu kota negara Indonesia saat ini?",
+      "options": ["Jakarta", "Surabaya", "Bandung", "Medan"],
+      "answer": "Jakarta",
+      "explanation": "Jakarta saat ini masih berstatus sebagai ibu kota negara Republik Indonesia."
+    },
+    {
+      "question": "Planet terdekat dari Matahari dalam tata surya adalah...",
+      "options": ["Merkurius", "Venus", "Bumi", "Mars"],
+      "answer": "Merkurius",
+      "explanation": "Merkurius adalah planet terdekat dengan Matahari berjarak sekitar 58 juta km."
+    },
+    {
+      "question": "Berapa hasil dari 25 x 4?",
+      "options": ["75", "100", "125", "150"],
+      "answer": "100",
+      "explanation": "25 dikalikan 4 menghasilkan 100."
+    }
+  ]
+}`;
+
 export const SAMPLE_DECK_JSON = `{
   "title": "Kosakata Bahasa Jepang N5",
   "description": "Kosakata dasar dan artinya untuk persiapan JLPT N5",
@@ -106,8 +133,13 @@ export function exportDecksToJson(decks: Deck[]): string {
   return JSON.stringify(decks, null, 2);
 }
 
-// Normalize a single card object to Flashcard format
-// Accepts: front/question/soal/term/q and back/answer/jawaban/definition/a
+// Normalize a single item object to Flashcard / Quiz format
+// Accepts:
+// Question: front / question / soal / pertanyaan / term / q
+// Answer: back / answer / jawaban / jawaban_benar / correctAnswer / correct_answer / definition / a
+// Options: options / pilihan / choices / opsi
+// Explanation: explanation / pembahasan / penjelasan / alasan
+// Hint: hint / petunjuk / clue
 function normalizeCard(rawCard: Record<string, unknown>, index: number): Flashcard | null {
   if (!rawCard || typeof rawCard !== 'object') return null;
 
@@ -115,28 +147,71 @@ function normalizeCard(rawCard: Record<string, unknown>, index: number): Flashca
     rawCard.front ??
     rawCard.question ??
     rawCard.soal ??
+    rawCard.pertanyaan ??
     rawCard.term ??
     rawCard.q ??
     ''
   ).trim();
 
-  const back = String(
+  // Extract multiple choice options if available
+  const rawOpts = rawCard.options ?? rawCard.pilihan ?? rawCard.choices ?? rawCard.opsi;
+  let options: string[] | undefined = undefined;
+  if (Array.isArray(rawOpts)) {
+    const cleaned = rawOpts.map(o => String(o).trim()).filter(Boolean);
+    if (cleaned.length >= 2) {
+      options = cleaned;
+    }
+  }
+
+  // Answer resolution (handles text, number index, or letter A-D)
+  const rawAnswer =
     rawCard.back ??
     rawCard.answer ??
     rawCard.jawaban ??
+    rawCard.jawaban_benar ??
+    rawCard.correctAnswer ??
+    rawCard.correct_answer ??
     rawCard.definition ??
-    rawCard.a ??
-    ''
-  ).trim();
+    rawCard.a;
+
+  let back = '';
+
+  if (typeof rawAnswer === 'number' && options && options[rawAnswer]) {
+    // 0 -> option[0], 1 -> option[1]
+    back = options[rawAnswer];
+  } else if (typeof rawAnswer === 'string') {
+    const trimmed = rawAnswer.trim();
+    // Check if it's a single letter A, B, C, D (case insensitive) and options exist
+    if (options && options.length >= 2 && /^[A-Da-d]$/.test(trimmed)) {
+      const letterIdx = trimmed.toUpperCase().charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+      if (options[letterIdx]) {
+        back = options[letterIdx];
+      } else {
+        back = trimmed;
+      }
+    } else {
+      back = trimmed;
+    }
+  } else if (rawAnswer !== undefined && rawAnswer !== null) {
+    back = String(rawAnswer).trim();
+  }
 
   if (!front || !back) return null;
 
+  // If options exist, make sure the correct answer is one of the options
+  if (options && options.length >= 2 && !options.includes(back)) {
+    options.unshift(back);
+  }
+
   const hint = rawCard.hint ?? rawCard.petunjuk ?? rawCard.clue;
+  const explanation = rawCard.explanation ?? rawCard.pembahasan ?? rawCard.penjelasan ?? rawCard.alasan;
 
   return {
     id: (rawCard.id as string) || `c-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
     front,
     back,
+    options,
+    explanation: explanation ? String(explanation).trim() : undefined,
     hint: hint ? String(hint).trim() : undefined,
     mastered: Boolean(rawCard.mastered),
   };
@@ -174,16 +249,24 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
       throw new Error('Array JSON kosong.');
     }
 
-    // Check if it's an array of Decks (each item has 'title' and 'cards')
+    // Check if it's an array of Decks (each item has 'title' and ('cards' or 'questions' or 'soal'))
     const looksLikeMultiDeck = parsed.some(
-      item => item && typeof item === 'object' && 'title' in item && 'cards' in item
+      item => item && typeof item === 'object' && 'title' in item && ('cards' in item || 'questions' in item || 'soal' in item || 'quiz' in item)
     );
 
     if (looksLikeMultiDeck) {
       const decks: Deck[] = [];
       parsed.forEach((rawDeck, dIdx) => {
         if (!rawDeck || typeof rawDeck !== 'object') return;
-        const rawCards = Array.isArray(rawDeck.cards) ? rawDeck.cards : [];
+        const rawCards = Array.isArray(rawDeck.cards)
+          ? rawDeck.cards
+          : Array.isArray(rawDeck.questions)
+          ? rawDeck.questions
+          : Array.isArray(rawDeck.soal)
+          ? rawDeck.soal
+          : Array.isArray(rawDeck.quiz)
+          ? rawDeck.quiz
+          : [];
         const cards: Flashcard[] = [];
         rawCards.forEach((c: Record<string, unknown>, cIdx: number) => {
           const norm = normalizeCard(c, cIdx);
@@ -212,7 +295,7 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
       return { type: 'multi-deck', decks };
     }
 
-    // Otherwise, treat as an array of Cards!
+    // Otherwise, treat as an array of Cards / Questions!
     const cards: Flashcard[] = [];
     parsed.forEach((item, idx) => {
       const norm = normalizeCard(item as Record<string, unknown>, idx);
@@ -220,27 +303,33 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
     });
 
     if (cards.length === 0) {
-      throw new Error('Tidak ada kartu yang valid. Pastikan setiap kartu memiliki sisi "front" (pertanyaan) dan "back" (jawaban).');
+      throw new Error('Tidak ada kartu atau soal yang valid. Pastikan setiap soal memiliki pertanyaan dan jawaban.');
     }
 
     return { type: 'cards', cards };
   }
 
-  // Case 2: Single Deck Object { title, description, category, color, cards }
+  // Case 2: Single Deck Object { title, description, category, color, questions/cards }
   if (parsed && typeof parsed === 'object') {
     const rawObj = parsed as Record<string, unknown>;
 
-    // Find cards array
+    // Find cards / questions array
     const rawCards = Array.isArray(rawObj.cards)
       ? rawObj.cards
-      : Array.isArray(rawObj.flashcards)
-      ? rawObj.flashcards
+      : Array.isArray(rawObj.questions)
+      ? rawObj.questions
       : Array.isArray(rawObj.soal)
       ? rawObj.soal
+      : Array.isArray(rawObj.quiz)
+      ? rawObj.quiz
+      : Array.isArray(rawObj.kuis)
+      ? rawObj.kuis
+      : Array.isArray(rawObj.flashcards)
+      ? rawObj.flashcards
       : null;
 
     if (!rawCards) {
-      throw new Error('Objek dek harus memiliki properti "cards" yang berisi daftar kartu.');
+      throw new Error('Objek dek harus memiliki daftar pertanyaan (properti "questions" atau "cards").');
     }
 
     const cards: Flashcard[] = [];
