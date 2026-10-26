@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Save, FileText, Check, Palette, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, FileText, Check, Palette, ListPlus } from 'lucide-react';
 import type { Deck, Flashcard } from '../types';
 import { parseCsvCards } from '../utils/storage';
 
@@ -141,6 +141,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
             Judul Dek *
           </label>
           <input
+            aria-label="Judul dek"
             type="text"
             value={title}
             onChange={e => setTitle(e.target.value)}
@@ -154,6 +155,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
             Deskripsi (Opsional)
           </label>
           <textarea
+            aria-label="Deskripsi dek"
             rows={2}
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -168,6 +170,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
               Kategori
             </label>
             <input
+              aria-label="Kategori dek"
               type="text"
               value={category}
               onChange={e => setCategory(e.target.value)}
@@ -180,13 +183,14 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
               <Palette className="w-3.5 h-3.5" /> Tema Warna
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {COLOR_PRESETS.map(preset => (
                 <button
                   key={preset.value}
                   type="button"
                   onClick={() => setColor(preset.value)}
-                  className={`w-7 h-7 rounded-full bg-gradient-to-r ${preset.value} flex items-center justify-center transition-transform ${
+                  aria-pressed={color === preset.value}
+                  className={`w-11 h-11 shrink-0 rounded-full bg-gradient-to-r ${preset.value} flex items-center justify-center transition-transform ${
                     color === preset.value ? 'scale-110 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-800' : 'opacity-80 hover:opacity-100'
                   }`}
                   title={preset.label}
@@ -200,7 +204,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
       </div>
 
       {/* Cards Section Header */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
           <span>Daftar Kartu</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
@@ -234,7 +238,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
         <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <ListPlus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               Salin-Tempel Massal (Dari ChatGPT / Excel / Catatan)
             </h4>
           </div>
@@ -285,6 +289,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
                   Sisi Depan (Pertanyaan / Istilah) *
                 </label>
                 <textarea
+                  aria-label={`Pertanyaan kartu ${idx + 1}`}
                   rows={2}
                   value={card.front}
                   onChange={e => handleUpdateCard(card.id, 'front', e.target.value)}
@@ -300,6 +305,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
                 <textarea
                   rows={2}
                   value={card.back}
+                  aria-label={`Jawaban kartu ${idx + 1}`}
                   onChange={e => handleUpdateCard(card.id, 'back', e.target.value)}
                   placeholder="Contoh: Proses tumbuhan mengubah cahaya menjadi energi kimia."
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"

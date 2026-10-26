@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { X, Trophy, BarChart3, CheckCircle2, RotateCcw, Flame } from 'lucide-react';
+import { X, Trophy, BarChart3, CheckCircle2, RotateCcw, Layers } from 'lucide-react';
 import type { Deck } from '../types';
 import { loadQuizHistory } from '../utils/storage';
+import { useDialog } from './useDialog';
 
 interface StatsModalProps {
   decks: Deck[];
@@ -16,7 +17,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   onClose,
   onResetProgress,
 }) => {
-  const quizHistory = useMemo(() => loadQuizHistory(), [isOpen]);
+  const dialogRef = useDialog(isOpen, onClose);
+  const quizHistory = useMemo(() => isOpen ? loadQuizHistory() : [], [isOpen]);
 
   const stats = useMemo(() => {
     let totalCards = 0;
@@ -48,8 +50,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-5 border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+    <div className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Statistik pembelajaran" tabIndex={-1} className="sheet-panel rounded-3xl max-w-md w-full border space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -58,6 +60,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
           </h3>
           <button
             onClick={onClose}
+            aria-label="Tutup statistik"
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -102,15 +105,15 @@ export const StatsModal: React.FC<StatsModalProps> = ({
             </p>
           </div>
 
-          <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/40 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1">
-              <Flame className="w-3 h-3" /> Konsistensi
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1">
+              <Layers className="w-3 h-3" /> Materi
             </span>
-            <p className="text-xl font-black text-purple-950 dark:text-purple-100 mt-1">
-              Aktif
+            <p className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
+              {stats.totalDecks}
             </p>
-            <p className="text-[11px] text-purple-700/80 dark:text-purple-300">
-              Data tersimpan di HP
+            <p className="text-[11px] text-slate-600 dark:text-slate-300">
+              dek dalam koleksi
             </p>
           </div>
         </div>

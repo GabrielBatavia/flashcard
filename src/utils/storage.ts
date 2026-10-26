@@ -14,7 +14,7 @@ export function loadDecks(): Deck[] {
       return DEFAULT_DECKS;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
     return DEFAULT_DECKS;

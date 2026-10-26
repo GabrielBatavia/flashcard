@@ -23,6 +23,10 @@ export function App() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [currentMode]);
+
   // Initialize theme class
   useEffect(() => {
     saveThemePreference(theme);
@@ -106,7 +110,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors flex flex-col font-sans">
+    <div className="app-shell">
       {/* Top Navbar */}
       <Navbar
         currentMode={currentMode}
@@ -121,7 +125,7 @@ export function App() {
       />
 
       {/* Main Study / Deck Area */}
-      <main className="flex-1 w-full">
+      <main key={currentMode} className={`page-content page-${currentMode}`}>
         {currentMode === 'deck-select' && (
           <DeckList
             decks={decks}
@@ -135,6 +139,7 @@ export function App() {
 
         {currentMode === 'flashcards' && activeDeck && (
           <FlashcardViewer
+            key={activeDeck.id}
             deck={activeDeck}
             onBack={() => setCurrentMode('deck-select')}
             onUpdateDeck={handleUpdateDeckFromStudy}
@@ -144,6 +149,7 @@ export function App() {
 
         {currentMode === 'quiz' && activeDeck && (
           <QuizViewer
+            key={activeDeck.id}
             deck={activeDeck}
             onBack={() => setCurrentMode('deck-select')}
             onGoToFlashcards={() => setCurrentMode('flashcards')}

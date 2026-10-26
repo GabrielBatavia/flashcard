@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ArrowLeft, RotateCw, ChevronLeft, ChevronRight, Shuffle, 
-  Volume2, HelpCircle, Check, X, Sparkles, RefreshCw 
+  Volume2, HelpCircle, Check, X, ListChecks, RefreshCw
 } from 'lucide-react';
 import type { Deck, Flashcard } from '../types';
 import { soundManager } from '../utils/sound';
@@ -31,23 +31,19 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   // Touch swipe handling for mobile
   const touchStartX = useRef<number | null>(null);
 
-  // Sync cards if deck changes
-  useEffect(() => {
+  const toggleFilter = () => {
+    const nextFilter = !filterUnmasteredOnly;
     let activeCards = [...deck.cards];
-    if (filterUnmasteredOnly) {
+    if (nextFilter) {
       activeCards = activeCards.filter(c => !c.mastered);
-      if (activeCards.length === 0) {
-        // If all are mastered, fall back to all
-        activeCards = [...deck.cards];
-        setFilterUnmasteredOnly(false);
-      }
     }
+    setFilterUnmasteredOnly(nextFilter);
     setCards(activeCards);
     setCurrentIndex(0);
     setIsFlipped(false);
     setShowHint(false);
     setIsFinished(false);
-  }, [deck, filterUnmasteredOnly]);
+  };
 
   const currentCard = cards[currentIndex];
 
@@ -64,6 +60,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     } else {
       setIsFinished(true);
       confetti({
+        disableForReducedMotion: true,
         particleCount: 80,
         spread: 60,
         origin: { y: 0.6 },
@@ -88,7 +85,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     setShowHint(false);
   };
 
-  const handleMarkMastery = (mastered: boolean) => {
+  const handleMarkMastery = useCallback((mastered: boolean) => {
     if (!currentCard) return;
     if (mastered) {
       soundManager.playCorrect();
@@ -105,15 +102,13 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     // Update local card list too
     setCards(prev => prev.map(c => c.id === currentCard.id ? { ...c, mastered } : c));
 
-    // Auto advance
-    setTimeout(() => {
-      handleNext();
-    }, 220);
-  };
+    handleNext();
+  }, [currentCard, deck, onUpdateDeck, handleNext]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelector('[role="dialog"]') || (e.target instanceof HTMLElement && e.target.closest('button, input, textarea, select'))) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         handleFlip();
@@ -154,7 +149,8 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   if (!currentCard) {
     return (
       <div className="max-w-md mx-auto p-6 text-center">
-        <p className="text-slate-600 dark:text-slate-300">Tidak ada kartu dalam dek ini.</p>
+        <p className="text-slate-600 dark:text-slate-300">{filterUnmasteredOnly ? 'Semua kartu sudah kamu pahami.' : 'Tidak ada kartu dalam dek ini.'}</p>
+        {filterUnmasteredOnly && <button onClick={toggleFilter} className="button primary mt-4">Pelajari semua kartu</button>}
         <button
           onClick={onBack}
           className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold"
@@ -175,6 +171,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       <div className="flex items-center justify-between gap-2 mb-3">
         <button
           onClick={onBack}
+          aria-label="Kembali ke materi"
           className="p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -203,7 +200,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
           </button>
 
           <button
-            onClick={() => setFilterUnmasteredOnly(!filterUnmasteredOnly)}
+            onClick={toggleFilter}
             className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors ${
               filterUnmasteredOnly
                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
@@ -243,7 +240,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       {isFinished ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl my-auto">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-white flex items-center justify-center text-3xl mb-4 shadow-lg shadow-emerald-500/20">
-            🎉
+            <Check size={28} />
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
             Selesai Mempelajari Dek!
@@ -257,7 +254,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
               onClick={onStartQuiz}
               className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95 transition-transform"
             >
-              <Sparkles className="w-4 h-4" />
+              <ListChecks className="w-4 h-4" />
               Uji Kemampuan dengan Kuis
             </button>
             <button
@@ -283,6 +280,8 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         <div className="flex-1 flex flex-col justify-between">
           {/* Flip Card with Touch Gestures */}
           <div
+            tabIndex={0}
+            aria-label={isFlipped ? 'Kartu jawaban. Tekan Enter untuk membalik.' : 'Kartu pertanyaan. Tekan Enter untuk membalik.'}
             className="perspective-1000 w-full flex-1 flex flex-col min-h-[320px] max-h-[460px] cursor-pointer"
             onClick={handleFlip}
             onTouchStart={onTouchStart}
@@ -333,7 +332,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
                   {/* Hint Reveal */}
                   {showHint && currentCard.hint && (
                     <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200 animate-fadeIn">
-                      💡 <strong>Petunjuk:</strong> {currentCard.hint}
+                      <strong>Petunjuk:</strong> {currentCard.hint}
                     </div>
                   )}
                 </div>

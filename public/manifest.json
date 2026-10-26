@@ -4,8 +4,8 @@
   "description": "Aplikasi belajar cepat dengan Flashcard interaktif dan Kuis pilihan ganda",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
+  "background_color": "#edf4fa",
+  "theme_color": "#edf4fa",
   "orientation": "portrait-primary",
   "icons": [
     {

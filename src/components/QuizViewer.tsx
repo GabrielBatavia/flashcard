@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   ArrowLeft, CheckCircle2, XCircle, RotateCcw, 
   Flame, BookOpen, AlertCircle, ArrowRight 
@@ -19,7 +19,6 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   onBack,
   onGoToFlashcards,
 }) => {
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
@@ -53,18 +52,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
     });
   }, [deck.cards]);
 
-  // Initial questions setup
-  useEffect(() => {
-    const q = generateQuestions();
-    setQuestions(q);
-    setCurrentIdx(0);
-    setSelectedAnswer(null);
-    setIsAnswerSubmitted(false);
-    setStreak(0);
-    setMaxStreak(0);
-    setScore(0);
-    setIsQuizComplete(false);
-  }, [generateQuestions]);
+  const [questions, setQuestions] = useState<QuizQuestion[]>(() => generateQuestions());
 
   const currentQ = questions[currentIdx];
 
@@ -104,7 +92,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
       setIsAnswerSubmitted(false);
     } else {
       // Complete quiz
-      const finalScore = score + (selectedAnswer === currentQ.correctAnswer ? 1 : 0);
+      const finalScore = score;
       const percentage = Math.round((finalScore / questions.length) * 100);
       
       const wrongList = questions
@@ -127,6 +115,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
 
       if (percentage >= 75) {
         confetti({
+          disableForReducedMotion: true,
           particleCount: 100,
           spread: 70,
           origin: { y: 0.6 },
@@ -195,19 +184,19 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
     let badgeColor = 'from-amber-400 to-orange-500';
 
     if (finalScorePercentage === 100) {
-      feedbackTitle = 'Sempurna! 🏆';
+      feedbackTitle = 'Semua jawaban benar.';
       feedbackDesc = 'Semua pertanyaan dijawab dengan benar tanpa cela!';
       badgeColor = 'from-emerald-400 to-teal-500';
     } else if (finalScorePercentage >= 80) {
-      feedbackTitle = 'Hebat Sekali! 🌟';
+      feedbackTitle = 'Materinya sudah kamu kuasai.';
       feedbackDesc = 'Sebagian besar materi sudah kamu pahami dengan baik.';
       badgeColor = 'from-indigo-500 to-purple-600';
     } else if (finalScorePercentage >= 60) {
-      feedbackTitle = 'Bagus! 👍';
+      feedbackTitle = 'Pemahamanmu mulai terbentuk.';
       feedbackDesc = 'Hasil yang cukup baik, terus asah pemahamanmu!';
       badgeColor = 'from-blue-500 to-cyan-500';
     } else {
-      feedbackTitle = 'Tetap Semangat! 💪';
+      feedbackTitle = 'Masih ada yang bisa dipelajari.';
       feedbackDesc = 'Jangan berkecil hati, review kembali materi dan coba lagi!';
       badgeColor = 'from-rose-500 to-pink-600';
     }
@@ -246,7 +235,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
               </div>
               <div>
                 <p className="text-amber-500 font-medium">Streak</p>
-                <p className="text-base font-bold text-amber-600 dark:text-amber-400">🔥 {maxStreak}</p>
+                <p className="text-base font-bold text-amber-600 dark:text-amber-400">{maxStreak}</p>
               </div>
             </div>
 
@@ -339,7 +328,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
 
         {/* Streak indicator */}
         {streak > 1 && (
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold text-xs shadow-sm animate-bounce">
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 font-semibold text-xs">
             <Flame className="w-3.5 h-3.5 fill-current" />
             <span>{streak} Streak!</span>
           </div>
