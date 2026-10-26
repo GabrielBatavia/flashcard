@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Plus, ArrowUpRight, Ellipsis, Pencil, Trash2, Layers, Download, X, ListChecks, BookOpen, FileCode } from 'lucide-react';
 import type { Deck } from '../types';
 import { useDialog } from './useDialog';
+import { usePresence } from './usePresence';
 
 interface DeckListProps {
   decks: Deck[];
@@ -18,7 +19,9 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
   const [category, setCategory] = useState('Semua');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Deck | null>(null);
-  const deleteRef = useDialog(Boolean(deleteCandidate), () => setDeleteCandidate(null));
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const { present: deletePresent, closing: deleteClosing } = usePresence(deleteOpen);
+  const deleteRef = useDialog(deletePresent, () => setDeleteOpen(false));
   const menuRef = useRef<HTMLDivElement>(null);
   const categories = useMemo(() => ['Semua', ...new Set(decks.map(d => d.category).filter(Boolean))], [decks]);
   const total = decks.reduce((n, d) => n + d.cards.length, 0);
@@ -64,10 +67,10 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
           const count = deck.cards.filter(c => c.mastered).length;
           const progress = deck.cards.length ? Math.round(count / deck.cards.length * 100) : 0;
           return (
-            <article className="deck-card" key={deck.id}>
+            <article className="deck-card" key={deck.id} style={{ animationDelay: `${Math.min(index, 5) * 40}ms` }}>
               <div className="deck-topline"><span className={`deck-symbol bg-gradient-to-br ${deck.color || 'from-blue-500 to-cyan-600'}`}><Layers size={23} /></span><span className="deck-category">{deck.category || 'Umum'}</span>
                 <div className="deck-menu" ref={openMenu === deck.id ? menuRef : undefined}><button className="icon-button" aria-label={`Opsi ${deck.title}`} aria-expanded={openMenu === deck.id} onClick={() => setOpenMenu(openMenu === deck.id ? null : deck.id)}><Ellipsis size={22} /></button>
-                  {openMenu === deck.id && <div className="menu-popover"><button onClick={() => { setOpenMenu(null); onEditDeck(deck); }}><Pencil size={16} />Edit dek</button><button className="danger" onClick={() => { setOpenMenu(null); setDeleteCandidate(deck); }}><Trash2 size={16} />Hapus dek</button></div>}
+                  {openMenu === deck.id && <div className="menu-popover"><button onClick={() => { setOpenMenu(null); onEditDeck(deck); }}><Pencil size={16} />Edit dek</button><button className="danger" onClick={() => { setOpenMenu(null); setDeleteCandidate(deck); setDeleteOpen(true); }}><Trash2 size={16} />Hapus dek</button></div>}
                 </div>
               </div>
               <div className="deck-copy"><span className="deck-index">{String(index + 1).padStart(2, '0')} / {deck.cards.length} kartu</span><h3>{deck.title}</h3><p>{deck.description || 'Materi siap untuk dipelajari.'}</p></div>
@@ -78,11 +81,11 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
         })}</div> : <div className="empty-state"><Layers size={32} /><h3>{decks.length ? 'Materinya belum ketemu.' : 'Koleksi pertamamu dimulai di sini.'}</h3><p>{decks.length ? 'Coba kata kunci lain atau tampilkan semua kategori.' : 'Buat dek dan tambahkan hal yang ingin kamu ingat.'}</p><button className="button primary" onClick={decks.length ? () => { setSearch(''); setCategory('Semua'); } : onCreateDeck}>{decks.length ? 'Tampilkan semua materi' : 'Buat dek pertama'}</button></div>}
       </section>
       <p className="library-footnote">Materi dan progres tersimpan di perangkat ini.</p>
-      {deleteCandidate && <div className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeleteCandidate(null); }}>
-        <div className="sheet-panel rounded-3xl w-full max-w-md border" ref={deleteRef} role="dialog" aria-modal="true" aria-labelledby="delete-title" tabIndex={-1}>
+      {deletePresent && deleteCandidate && <div data-closing={deleteClosing} className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setDeleteOpen(false); }}>
+        <div inert={deleteClosing} className="sheet-panel rounded-3xl w-full max-w-md border" ref={deleteRef} role="dialog" aria-modal="true" aria-labelledby="delete-title" tabIndex={-1}>
           <h2 id="delete-title" className="text-xl font-semibold">Hapus materi ini?</h2>
           <p className="mt-3 text-sm leading-relaxed">Dek “{deleteCandidate.title}” dan {deleteCandidate.cards.length} kartunya akan dihapus dari perangkat ini. Tindakan ini tidak dapat dibatalkan.</p>
-          <div className="flex gap-3 mt-6"><button className="button flex-1" onClick={() => setDeleteCandidate(null)}>Batal</button><button className="button danger flex-1" onClick={() => { onDeleteDeck(deleteCandidate.id); setDeleteCandidate(null); }}>Hapus dek</button></div>
+          <div className="flex gap-3 mt-6"><button className="button flex-1" onClick={() => setDeleteOpen(false)}>Batal</button><button className="button danger flex-1" disabled={deleteClosing} onClick={() => { onDeleteDeck(deleteCandidate.id); setDeleteOpen(false); }}>Hapus dek</button></div>
         </div>
       </div>}
     </div>

@@ -4,6 +4,8 @@ import {
   AlertCircle, ArrowRight, Wand2, ListChecks, CreditCard, Bot 
 } from 'lucide-react';
 import type { Flashcard, Deck } from '../types';
+import { useDialog } from './useDialog';
+import { usePresence } from './usePresence';
 import { 
   parseFlexibleDeckJson, 
   SAMPLE_DECK_JSON, 
@@ -29,6 +31,8 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
   onImportDeck,
   onImportMultiDecks,
 }) => {
+  const { present, closing } = usePresence(isOpen);
+  const dialogRef = useDialog(present, onClose);
   const [activeTab, setActiveTab] = useState<'input' | 'guide'>('input');
   const [guideMode, setGuideMode] = useState<'quiz' | 'flashcard'>('quiz');
   const [jsonText, setJsonText] = useState('');
@@ -36,7 +40,7 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
   const [copiedFormat, setCopiedFormat] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
 
-  if (!isOpen) return null;
+  if (!present) return null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setErrorMsg(null);
@@ -135,8 +139,8 @@ ${SAMPLE_DECK_JSON}`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[92vh]">
+    <div data-closing={closing} className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={dialogRef} inert={closing} role="dialog" aria-modal="true" aria-label="Impor JSON" tabIndex={-1} className="sheet-panel rounded-3xl max-w-lg w-full border flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/80">
           <div className="flex items-center gap-2.5">
@@ -154,6 +158,7 @@ ${SAMPLE_DECK_JSON}`;
           </div>
           <button
             onClick={onClose}
+            aria-label="Tutup impor JSON"
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <X className="w-5 h-5" />

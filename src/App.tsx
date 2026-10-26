@@ -11,6 +11,7 @@ import { DeckEditor } from './components/DeckEditor';
 import { ImportExportModal } from './components/ImportExportModal';
 import { StatsModal } from './components/StatsModal';
 import { JsonImportModal } from './components/JsonImportModal';
+import { useMotionStep } from './components/useMotionStep';
 
 export function App() {
   const [decks, setDecks] = useState<Deck[]>(() => loadDecks());
@@ -24,6 +25,12 @@ export function App() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const { ref: pageRef, run: transitionPage, busy: isNavigating } = useMotionStep<HTMLElement>(0);
+
+  const navigate = (mode: StudyMode) => {
+    if (mode === currentMode) return;
+    void transitionPage(() => setCurrentMode(mode));
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -45,17 +52,17 @@ export function App() {
 
   const handleSelectDeck = (deck: Deck, mode: 'flashcards' | 'quiz') => {
     setActiveDeckId(deck.id);
-    setCurrentMode(mode);
+    navigate(mode);
   };
 
   const handleCreateDeck = () => {
     setEditingDeck(null);
-    setCurrentMode('edit-deck');
+    navigate('edit-deck');
   };
 
   const handleEditDeck = (deck: Deck) => {
     setEditingDeck(deck);
-    setCurrentMode('edit-deck');
+    navigate('edit-deck');
   };
 
   const handleSaveDeck = (newOrUpdatedDeck: Deck) => {
@@ -69,14 +76,14 @@ export function App() {
       return [newOrUpdatedDeck, ...prev];
     });
     setActiveDeckId(newOrUpdatedDeck.id);
-    setCurrentMode('deck-select');
+    navigate('deck-select');
   };
 
   const handleDeleteDeck = (deckId: string) => {
     setDecks(prev => prev.filter(d => d.id !== deckId));
     if (activeDeckId === deckId) {
       setActiveDeckId(null);
-      setCurrentMode('deck-select');
+      navigate('deck-select');
     }
   };
 
@@ -130,7 +137,7 @@ export function App() {
     };
     setDecks(prev => [newDeck, ...prev]);
     setActiveDeckId(newDeck.id);
-    setCurrentMode('deck-select');
+    navigate('deck-select');
   };
 
   const handleImportMultiDecksFromJson = (importedDecks: Deck[]) => {
@@ -138,7 +145,7 @@ export function App() {
     if (importedDecks.length > 0) {
       setActiveDeckId(importedDecks[0].id);
     }
-    setCurrentMode('deck-select');
+    navigate('deck-select');
   };
 
   return (
@@ -147,7 +154,7 @@ export function App() {
       <Navbar
         currentMode={currentMode}
         activeDeck={activeDeck}
-        onNavigate={setCurrentMode}
+        onNavigate={navigate}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         theme={theme}
@@ -157,7 +164,7 @@ export function App() {
       />
 
       {/* Main Study / Deck Area */}
-      <main key={currentMode} className={`page-content page-${currentMode}`}>
+      <main ref={pageRef} tabIndex={-1} aria-busy={isNavigating} inert={isNavigating} className={`page-content page-${currentMode}`}>
         {currentMode === 'deck-select' && (
           <DeckList
             decks={decks}
@@ -174,9 +181,9 @@ export function App() {
           <FlashcardViewer
             key={activeDeck.id}
             deck={activeDeck}
-            onBack={() => setCurrentMode('deck-select')}
+            onBack={() => navigate('deck-select')}
             onUpdateDeck={handleUpdateDeckFromStudy}
-            onStartQuiz={() => setCurrentMode('quiz')}
+            onStartQuiz={() => navigate('quiz')}
           />
         )}
 
@@ -184,8 +191,8 @@ export function App() {
           <QuizViewer
             key={activeDeck.id}
             deck={activeDeck}
-            onBack={() => setCurrentMode('deck-select')}
-            onGoToFlashcards={() => setCurrentMode('flashcards')}
+            onBack={() => navigate('deck-select')}
+            onGoToFlashcards={() => navigate('flashcards')}
           />
         )}
 
@@ -193,7 +200,7 @@ export function App() {
           <DeckEditor
             deck={editingDeck}
             onSave={handleSaveDeck}
-            onCancel={() => setCurrentMode('deck-select')}
+            onCancel={() => navigate('deck-select')}
           />
         )}
       </main>
@@ -206,7 +213,7 @@ export function App() {
             if ((mode === 'flashcards' || mode === 'quiz') && !activeDeckId && decks.length > 0) {
               setActiveDeckId(decks[0].id);
             }
-            setCurrentMode(mode);
+            navigate(mode);
           }}
           hasActiveDeck={Boolean(activeDeck)}
           onNewDeck={handleCreateDeck}

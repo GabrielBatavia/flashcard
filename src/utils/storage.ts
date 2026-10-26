@@ -239,7 +239,7 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
-  } catch (err) {
+  } catch {
     throw new Error('Format JSON tidak valid. Periksa tanda koma, kurung kurawal {}, atau kutip dua "".');
   }
 

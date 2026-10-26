@@ -3,6 +3,7 @@ import { X, Trophy, BarChart3, CheckCircle2, RotateCcw, Layers } from 'lucide-re
 import type { Deck } from '../types';
 import { loadQuizHistory } from '../utils/storage';
 import { useDialog } from './useDialog';
+import { usePresence } from './usePresence';
 
 interface StatsModalProps {
   decks: Deck[];
@@ -17,8 +18,9 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   onClose,
   onResetProgress,
 }) => {
-  const dialogRef = useDialog(isOpen, onClose);
-  const quizHistory = useMemo(() => isOpen ? loadQuizHistory() : [], [isOpen]);
+  const { present, closing } = usePresence(isOpen);
+  const dialogRef = useDialog(present, onClose);
+  const quizHistory = useMemo(() => present ? loadQuizHistory() : [], [present]);
 
   const stats = useMemo(() => {
     let totalCards = 0;
@@ -47,11 +49,11 @@ export const StatsModal: React.FC<StatsModalProps> = ({
     };
   }, [decks, quizHistory]);
 
-  if (!isOpen) return null;
+  if (!present) return null;
 
   return (
-    <div className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Statistik pembelajaran" tabIndex={-1} className="sheet-panel rounded-3xl max-w-md w-full border space-y-4">
+    <div data-closing={closing} className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={dialogRef} inert={closing} role="dialog" aria-modal="true" aria-label="Statistik pembelajaran" tabIndex={-1} className="sheet-panel rounded-3xl max-w-md w-full border space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">

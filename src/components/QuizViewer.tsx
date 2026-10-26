@@ -7,6 +7,7 @@ import type { Deck, QuizQuestion, QuizResult } from '../types';
 import { soundManager } from '../utils/sound';
 import { saveQuizResult } from '../utils/storage';
 import confetti from 'canvas-confetti';
+import { useMotionStep } from './useMotionStep';
 
 interface QuizViewerProps {
   deck: Deck;
@@ -26,6 +27,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   const [maxStreak, setMaxStreak] = useState(0);
   const [score, setScore] = useState(0);
   const [isQuizComplete, setIsQuizComplete] = useState(false);
+  const { ref: questionRef, run: changeQuestion, busy: isMoving } = useMotionStep();
 
   // Generate randomized quiz questions
   const generateQuestions = useCallback((sourceCards = deck.cards): QuizQuestion[] => {
@@ -66,7 +68,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   const currentQ = questions[currentIdx];
 
   const handleSelectOption = (option: string) => {
-    if (isAnswerSubmitted) return; // prevent multiple clicks
+    if (isAnswerSubmitted || isMoving || !currentQ) return;
 
     setSelectedAnswer(option);
     setIsAnswerSubmitted(true);
@@ -76,11 +78,9 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
     if (isCorrect) {
       soundManager.playCorrect();
       setScore(prev => prev + 1);
-      setStreak(prev => {
-        const next = prev + 1;
-        if (next > maxStreak) setMaxStreak(next);
-        return next;
-      });
+      const nextStreak = streak + 1;
+      setStreak(nextStreak);
+      setMaxStreak(Math.max(nextStreak, maxStreak));
     } else {
       soundManager.playWrong();
       setStreak(0);
@@ -95,43 +95,43 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
   };
 
   const handleNextQuestion = () => {
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx(prev => prev + 1);
-      setSelectedAnswer(null);
-      setIsAnswerSubmitted(false);
-    } else {
-      // Complete quiz
-      const finalScore = score;
-      const percentage = Math.round((finalScore / questions.length) * 100);
-      
-      const wrongList = questions
-        .map((q, idx) => idx === currentIdx ? { ...q, userAnswer: selectedAnswer || '', isCorrect: selectedAnswer === q.correctAnswer } : q)
-        .filter(q => !q.isCorrect);
+    if (!isAnswerSubmitted || isQuizComplete) return;
+    void changeQuestion(() => {
+      if (currentIdx < questions.length - 1) {
+        setCurrentIdx(prev => prev + 1);
+        setSelectedAnswer(null);
+        setIsAnswerSubmitted(false);
+      } else {
+        const finalScore = score;
+        const percentage = Math.round((finalScore / questions.length) * 100);
+        const wrongList = questions
+          .map((q, idx) => idx === currentIdx ? { ...q, userAnswer: selectedAnswer || '', isCorrect: selectedAnswer === q.correctAnswer } : q)
+          .filter(q => !q.isCorrect);
 
-      const result: QuizResult = {
-        deckId: deck.id,
-        deckTitle: deck.title,
-        totalQuestions: questions.length,
-        correctCount: finalScore,
-        wrongCount: wrongList.length,
-        scorePercentage: percentage,
-        wrongQuestions: wrongList,
-        completedAt: Date.now(),
-      };
+        const result: QuizResult = {
+          deckId: deck.id,
+          deckTitle: deck.title,
+          totalQuestions: questions.length,
+          correctCount: finalScore,
+          wrongCount: wrongList.length,
+          scorePercentage: percentage,
+          wrongQuestions: wrongList,
+          completedAt: Date.now(),
+        };
+        saveQuizResult(result);
+        setIsQuizComplete(true);
 
-      saveQuizResult(result);
-      setIsQuizComplete(true);
-
-      if (percentage >= 75) {
-        confetti({
-          disableForReducedMotion: true,
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-        });
-        soundManager.playSuccess();
+        if (percentage >= 75) {
+          confetti({
+            disableForReducedMotion: true,
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+          });
+          soundManager.playSuccess();
+        }
       }
-    }
+    });
   };
 
   const handleRetryAll = () => {
@@ -211,7 +211,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
     }
 
     return (
-      <div className="max-w-md mx-auto px-4 pt-4 pb-24 space-y-5">
+      <div className="completion-screen max-w-md mx-auto px-4 pt-4 pb-24 space-y-5">
         {/* Result Card */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 text-center border border-slate-200 dark:border-slate-700 shadow-xl relative overflow-hidden">
           <div className="relative z-10">
@@ -373,7 +373,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
       </div>
 
       {/* Question Card */}
-      <div className="flex-1 flex flex-col justify-between">
+      <div ref={questionRef} aria-busy={isMoving} className="quiz-stage flex-1 flex flex-col justify-between">
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-200 dark:border-slate-700 shadow-md">
           <span className="text-[10px] font-bold tracking-wider uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full">
             PERTANYAAN
@@ -407,9 +407,10 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
             return (
               <button
                 key={idx}
-                disabled={isAnswerSubmitted}
+                disabled={isAnswerSubmitted || isMoving}
+                data-result={isAnswerSubmitted ? isCorrect ? 'correct' : isSelected ? 'wrong' : 'neutral' : undefined}
                 onClick={() => handleSelectOption(option)}
-                className={`w-full p-4 rounded-2xl border text-left text-xs sm:text-sm font-medium transition-all shadow-sm flex items-center justify-between gap-3 active:scale-[0.98] ${optionStyle}`}
+                className={`quiz-option w-full p-4 rounded-2xl border text-left text-xs sm:text-sm font-medium shadow-sm flex items-center justify-between gap-3 ${optionStyle}`}
               >
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 text-xs font-bold flex items-center justify-center flex-shrink-0">
@@ -419,7 +420,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
                 </div>
 
                 {isAnswerSubmitted && (
-                  <div>
+                  <div className="answer-mark">
                     {isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />}
                     {isSelected && !isCorrect && <XCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />}
                   </div>
@@ -431,7 +432,7 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
 
         {/* Explanation / Pembahasan after answering */}
         {isAnswerSubmitted && currentQ?.explanation && (
-          <div className="mt-3.5 p-3.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl text-xs text-indigo-950 dark:text-indigo-200 animate-fadeIn space-y-1">
+          <div role="status" className="quiz-explanation mt-3.5 p-3.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl text-xs text-indigo-950 dark:text-indigo-200 space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-indigo-700 dark:text-indigo-400">
               <HelpCircle className="w-4 h-4 text-indigo-500 shrink-0" />
               <span>Pembahasan Soal:</span>
@@ -443,10 +444,11 @@ export const QuizViewer: React.FC<QuizViewerProps> = ({
         )}
 
         {/* Bottom Continue / Next Button */}
-        <div className="mt-5">
+        <div className="quiz-footer mt-5">
           {isAnswerSubmitted ? (
             <button
               onClick={handleNextQuestion}
+              disabled={isMoving}
               className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all"
             >
               <span>{currentIdx === questions.length - 1 ? 'Lihat Hasil Kuis' : 'Soal Berikutnya'}</span>

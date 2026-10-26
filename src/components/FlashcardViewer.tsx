@@ -6,6 +6,7 @@ import {
 import type { Deck, Flashcard } from '../types';
 import { soundManager } from '../utils/sound';
 import confetti from 'canvas-confetti';
+import { useMotionStep } from './useMotionStep';
 
 interface FlashcardViewerProps {
   deck: Deck;
@@ -27,9 +28,11 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   const [invertSide, setInvertSide] = useState(false); // study Back first
   const [filterUnmasteredOnly, setFilterUnmasteredOnly] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const { ref: cardRef, run: changeCard, busy: isMoving } = useMotionStep();
 
   // Touch swipe handling for mobile
-  const touchStartX = useRef<number | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
 
   const toggleFilter = () => {
     const nextFilter = !filterUnmasteredOnly;
@@ -37,22 +40,25 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     if (nextFilter) {
       activeCards = activeCards.filter(c => !c.mastered);
     }
-    setFilterUnmasteredOnly(nextFilter);
-    setCards(activeCards);
-    setCurrentIndex(0);
-    setIsFlipped(false);
-    setShowHint(false);
-    setIsFinished(false);
+    void changeCard(() => {
+      setFilterUnmasteredOnly(nextFilter);
+      setCards(activeCards);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      setShowHint(false);
+      setIsFinished(false);
+    });
   };
 
   const currentCard = cards[currentIndex];
 
   const handleFlip = useCallback(() => {
+    if (isMoving || isFinished) return;
     soundManager.playFlip();
     setIsFlipped(prev => !prev);
-  }, []);
+  }, [isMoving, isFinished]);
 
-  const handleNext = useCallback(() => {
+  const advance = useCallback(() => {
     if (currentIndex < cards.length - 1) {
       setIsFlipped(false);
       setShowHint(false);
@@ -69,45 +75,52 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     }
   }, [currentIndex, cards.length]);
 
+  const handleNext = useCallback(() => {
+    if (!isFinished) void changeCard(advance);
+  }, [changeCard, advance, isFinished]);
+
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
-      setIsFlipped(false);
-      setShowHint(false);
-      setCurrentIndex(prev => prev - 1);
+      void changeCard(() => {
+        setIsFlipped(false);
+        setShowHint(false);
+        setCurrentIndex(prev => prev - 1);
+        setIsFinished(false);
+      }, -1);
     }
-  }, [currentIndex]);
+  }, [currentIndex, changeCard]);
 
   const handleShuffle = () => {
-    const shuffled = [...cards].sort(() => Math.random() - 0.5);
-    setCards(shuffled);
-    setCurrentIndex(0);
-    setIsFlipped(false);
-    setShowHint(false);
+    void changeCard(() => {
+      const shuffled = [...cards].sort(() => Math.random() - 0.5);
+      setCards(shuffled);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      setShowHint(false);
+    });
   };
 
   const handleMarkMastery = useCallback((mastered: boolean) => {
-    if (!currentCard) return;
-    if (mastered) {
-      soundManager.playCorrect();
-    } else {
-      soundManager.playWrong();
-    }
-
-    const updatedDeckCards = deck.cards.map(c => 
-      c.id === currentCard.id ? { ...c, mastered, lastReviewed: Date.now() } : c
-    );
-    const updatedDeck = { ...deck, cards: updatedDeckCards, updatedAt: Date.now() };
-    onUpdateDeck(updatedDeck);
-
-    // Update local card list too
-    setCards(prev => prev.map(c => c.id === currentCard.id ? { ...c, mastered } : c));
-
-    handleNext();
-  }, [currentCard, deck, onUpdateDeck, handleNext]);
+    if (!currentCard || isFinished) return;
+    void changeCard(() => {
+      if (mastered) {
+        soundManager.playCorrect();
+      } else {
+        soundManager.playWrong();
+      }
+      const updatedDeckCards = deck.cards.map(c =>
+        c.id === currentCard.id ? { ...c, mastered, lastReviewed: Date.now() } : c
+      );
+      onUpdateDeck({ ...deck, cards: updatedDeckCards, updatedAt: Date.now() });
+      setCards(prev => prev.map(c => c.id === currentCard.id ? { ...c, mastered } : c));
+      advance();
+    });
+  }, [currentCard, deck, onUpdateDeck, advance, changeCard, isFinished]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || isMoving) return;
       if (document.querySelector('[role="dialog"]') || (e.target instanceof HTMLElement && e.target.closest('button, input, textarea, select'))) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
@@ -124,17 +137,22 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFlip, handleNext, handlePrev, handleMarkMastery]);
+  }, [handleFlip, handleNext, handlePrev, handleMarkMastery, isMoving]);
 
   // Touch handlers for mobile swipe
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
+    suppressClick.current = false;
+    touchStart.current = null;
+    if (isMoving || (e.target as HTMLElement).closest('button') || e.touches.length !== 1) return;
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const diff = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(diff) > 50) {
+    if (!touchStart.current) return;
+    const diff = e.changedTouches[0].clientX - touchStart.current.x;
+    const vertical = e.changedTouches[0].clientY - touchStart.current.y;
+    if (Math.abs(diff) > 50 && Math.abs(diff) > Math.abs(vertical) * 1.4) {
+      suppressClick.current = true;
       if (diff < 0) {
         // Swiped left -> next
         handleNext();
@@ -143,7 +161,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         handlePrev();
       }
     }
-    touchStartX.current = null;
+    touchStart.current = null;
   };
 
   if (!currentCard) {
@@ -188,7 +206,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
           </button>
 
           <button
-            onClick={() => setInvertSide(!invertSide)}
+            onClick={() => { void changeCard(() => { setInvertSide(!invertSide); setIsFlipped(false); }); }}
             className={`p-2 rounded-xl transition-colors ${
               invertSide
                 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 font-bold'
@@ -238,7 +256,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
 
       {/* Finished Screen or Flashcard Display */}
       {isFinished ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl my-auto">
+        <div className="completion-screen flex-1 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-xl my-auto">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-white flex items-center justify-center text-3xl mb-4 shadow-lg shadow-emerald-500/20">
             <Check size={28} />
           </div>
@@ -280,20 +298,24 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
         <div className="flex-1 flex flex-col justify-between">
           {/* Flip Card with Touch Gestures */}
           <div
+            ref={cardRef}
+            aria-busy={isMoving}
             tabIndex={0}
             aria-label={isFlipped ? 'Kartu jawaban. Tekan Enter untuk membalik.' : 'Kartu pertanyaan. Tekan Enter untuk membalik.'}
-            className="perspective-1000 w-full flex-1 flex flex-col min-h-[320px] max-h-[460px] cursor-pointer"
-            onClick={handleFlip}
+            className="study-card-stage perspective-1000 w-full flex-1 flex flex-col min-h-[320px] max-h-[460px] cursor-pointer"
+            onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } handleFlip(); }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
+            onTouchCancel={() => { touchStart.current = null; suppressClick.current = false; }}
           >
             <div
+              key={currentCard.id}
               className={`relative w-full h-full duration-500 transform-style-3d transition-transform flex-1 ${
                 isFlipped ? 'rotate-y-180' : ''
               }`}
             >
               {/* FRONT FACE */}
-              <div className="absolute inset-0 w-full h-full backface-hidden bg-white dark:bg-slate-800 rounded-3xl border-2 border-slate-200 dark:border-slate-700/80 shadow-lg p-6 flex flex-col justify-between select-none">
+              <div inert={isFlipped || isMoving} aria-hidden={isFlipped} className="absolute inset-0 w-full h-full backface-hidden bg-white dark:bg-slate-800 rounded-3xl border-2 border-slate-200 dark:border-slate-700/80 shadow-lg p-6 flex flex-col justify-between select-none">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 rounded-full">
                     {invertSide ? 'JAWABAN' : 'PERTANYAAN'}
@@ -345,7 +367,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
               </div>
 
               {/* BACK FACE */}
-              <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 bg-gradient-to-b from-indigo-50/50 via-white to-indigo-50/20 dark:from-slate-800 dark:via-slate-800 dark:to-slate-850 rounded-3xl border-2 border-indigo-200 dark:border-indigo-900/60 shadow-lg p-6 flex flex-col justify-between select-none">
+              <div inert={!isFlipped || isMoving} aria-hidden={!isFlipped} className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 bg-gradient-to-b from-indigo-50/50 via-white to-indigo-50/20 dark:from-slate-800 dark:via-slate-800 dark:to-slate-850 rounded-3xl border-2 border-indigo-200 dark:border-indigo-900/60 shadow-lg p-6 flex flex-col justify-between select-none">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 rounded-full">
                     {invertSide ? 'PERTANYAAN' : 'JAWABAN'}

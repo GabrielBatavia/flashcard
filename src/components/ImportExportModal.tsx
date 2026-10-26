@@ -3,6 +3,7 @@ import { X, Download, Upload, Copy, Check, FileJson, AlertCircle } from 'lucide-
 import type { Deck } from '../types';
 import { exportDecksToJson, importDecksFromJson } from '../utils/storage';
 import { useDialog } from './useDialog';
+import { usePresence } from './usePresence';
 
 interface ImportExportModalProps {
   decks: Deck[];
@@ -17,13 +18,14 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   onClose,
   onImportSuccess,
 }) => {
-  const dialogRef = useDialog(isOpen, onClose);
+  const { present, closing } = usePresence(isOpen);
+  const dialogRef = useDialog(present, onClose);
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [jsonInput, setJsonInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  if (!present) return null;
 
   const jsonString = exportDecksToJson(decks);
 
@@ -75,8 +77,8 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({
   };
 
   return (
-    <div className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Cadangkan dan pulihkan data" tabIndex={-1} className="sheet-panel rounded-3xl max-w-md w-full border space-y-4">
+    <div data-closing={closing} className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={dialogRef} inert={closing} role="dialog" aria-modal="true" aria-label="Cadangkan dan pulihkan data" tabIndex={-1} className="sheet-panel rounded-3xl max-w-md w-full border space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
