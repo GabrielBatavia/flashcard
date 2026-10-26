@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Save, FileText, Check, Palette, ListPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, FileText, Check, Palette, ListPlus, FileCode, Wand2 } from 'lucide-react';
 import type { Deck, Flashcard } from '../types';
 import { parseCsvCards } from '../utils/storage';
+import { JsonImportModal } from './JsonImportModal';
 
 interface DeckEditorProps {
   deck?: Deck | null; // null if creating new
@@ -35,6 +36,8 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
   );
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState('');
+  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const [importNotification, setImportNotification] = useState<string | null>(null);
 
   const handleAddCard = () => {
     const newCard: Flashcard = {
@@ -80,6 +83,26 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
     setCards([...existing, ...newFlashcards]);
     setBulkText('');
     setBulkMode(false);
+  };
+
+  const handleImportFromModal = (deckData: {
+    title?: string;
+    description?: string;
+    category?: string;
+    color?: string;
+    cards: Flashcard[];
+  }) => {
+    if (deckData.title) setTitle(deckData.title);
+    if (deckData.description) setDescription(deckData.description);
+    if (deckData.category) setCategory(deckData.category);
+    if (deckData.color) setColor(deckData.color);
+
+    if (deckData.cards.length > 0) {
+      setCards(deckData.cards);
+    }
+
+    setImportNotification(`Berhasil mengimpor ${deckData.cards.length} kartu dari JSON! Silakan tinjau dan klik Simpan Dek.`);
+    setTimeout(() => setImportNotification(null), 5000);
   };
 
   const handleSave = () => {
@@ -131,6 +154,47 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
         >
           <Save className="w-4 h-4" />
           <span>Simpan</span>
+        </button>
+      </div>
+
+      {/* Import Notification Banner */}
+      {importNotification && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-200 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="font-medium">{importNotification}</span>
+          </div>
+          <button
+            onClick={() => setImportNotification(null)}
+            className="text-emerald-600 dark:text-emerald-400 hover:opacity-75 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Quick JSON Auto-Create Banner */}
+      <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-200 dark:border-indigo-800/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/20">
+            <Wand2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              Punya Data JSON dari ChatGPT?
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Isi otomatis judul, kategori, dan seluruh kartu materi langsung dari teks atau file JSON.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsJsonModalOpen(true)}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20 transition-all active:scale-95 shrink-0"
+        >
+          <FileCode className="w-4 h-4" />
+          <span>⚡ Impor dari JSON</span>
         </button>
       </div>
 
@@ -212,7 +276,16 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
           </span>
         </h3>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsJsonModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <FileCode className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Impor JSON</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setBulkMode(!bulkMode)}
@@ -354,6 +427,13 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
           Simpan Dek
         </button>
       </div>
+
+      {/* JSON Import Modal */}
+      <JsonImportModal
+        isOpen={isJsonModalOpen}
+        onClose={() => setIsJsonModalOpen(false)}
+        onImportDeck={handleImportFromModal}
+      />
     </div>
   );
 };

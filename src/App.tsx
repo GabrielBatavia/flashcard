@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Deck, StudyMode } from './types';
+import type { Deck, StudyMode, Flashcard } from './types';
 import { loadDecks, saveDecks, getThemePreference, saveThemePreference } from './utils/storage';
 import { soundManager } from './utils/sound';
 import { Navbar } from './components/Navbar';
@@ -10,6 +10,7 @@ import { QuizViewer } from './components/QuizViewer';
 import { DeckEditor } from './components/DeckEditor';
 import { ImportExportModal } from './components/ImportExportModal';
 import { StatsModal } from './components/StatsModal';
+import { JsonImportModal } from './components/JsonImportModal';
 
 export function App() {
   const [decks, setDecks] = useState<Deck[]>(() => loadDecks());
@@ -22,6 +23,7 @@ export function App() {
   // Modals
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -109,6 +111,36 @@ export function App() {
     }
   };
 
+  const handleImportDeckFromJson = (deckData: {
+    title?: string;
+    description?: string;
+    category?: string;
+    color?: string;
+    cards: Flashcard[];
+  }) => {
+    const newDeck: Deck = {
+      id: `deck-${Date.now()}`,
+      title: deckData.title || 'Dek Baru Impor',
+      description: deckData.description || '',
+      category: deckData.category || 'Umum',
+      color: deckData.color || 'from-indigo-500 to-purple-600',
+      cards: deckData.cards,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setDecks(prev => [newDeck, ...prev]);
+    setActiveDeckId(newDeck.id);
+    setCurrentMode('deck-select');
+  };
+
+  const handleImportMultiDecksFromJson = (importedDecks: Deck[]) => {
+    setDecks(prev => [...importedDecks, ...prev]);
+    if (importedDecks.length > 0) {
+      setActiveDeckId(importedDecks[0].id);
+    }
+    setCurrentMode('deck-select');
+  };
+
   return (
     <div className="app-shell">
       {/* Top Navbar */}
@@ -134,6 +166,7 @@ export function App() {
             onCreateDeck={handleCreateDeck}
             onDeleteDeck={handleDeleteDeck}
             onOpenImportExport={() => setIsImportExportOpen(true)}
+            onOpenJsonImport={() => setIsJsonModalOpen(true)}
           />
         )}
 
@@ -194,6 +227,14 @@ export function App() {
         isOpen={isImportExportOpen}
         onClose={() => setIsImportExportOpen(false)}
         onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Direct JSON Import Modal from Deck List */}
+      <JsonImportModal
+        isOpen={isJsonModalOpen}
+        onClose={() => setIsJsonModalOpen(false)}
+        onImportDeck={handleImportDeckFromJson}
+        onImportMultiDecks={handleImportMultiDecksFromJson}
       />
     </div>
   );

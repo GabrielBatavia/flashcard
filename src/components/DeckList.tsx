@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Plus, ArrowUpRight, Ellipsis, Pencil, Trash2, Layers, Download, X, ListChecks, BookOpen } from 'lucide-react';
+import { Search, Plus, ArrowUpRight, Ellipsis, Pencil, Trash2, Layers, Download, X, ListChecks, BookOpen, FileCode } from 'lucide-react';
 import type { Deck } from '../types';
 import { useDialog } from './useDialog';
 
@@ -10,9 +10,10 @@ interface DeckListProps {
   onCreateDeck: () => void;
   onDeleteDeck: (deckId: string) => void;
   onOpenImportExport: () => void;
+  onOpenJsonImport: () => void;
 }
 
-export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDeleteDeck, onOpenImportExport }: DeckListProps) {
+export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDeleteDeck, onOpenImportExport, onOpenJsonImport }: DeckListProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Semua');
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -45,9 +46,16 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
       </section>
 
       <section aria-labelledby="collection-title">
-        <div className="section-heading"><div><h2 id="collection-title">Koleksi materi <span>{decks.length}</span></h2><p>Satu dek, satu langkah lebih dekat.</p></div><button className="button primary desktop-create" onClick={onCreateDeck}><Plus size={18} />Buat dek</button></div>
+        <div className="section-heading">
+          <div><h2 id="collection-title">Koleksi materi <span>{decks.length}</span></h2><p>Satu dek, satu langkah lebih dekat.</p></div>
+          <div className="desktop-create flex items-center gap-2">
+            <button className="button secondary" onClick={onOpenJsonImport}><FileCode size={18} />Impor JSON</button>
+            <button className="button primary" onClick={onCreateDeck}><Plus size={18} />Buat dek</button>
+          </div>
+        </div>
         <div className="collection-tools">
           <div className="search-field"><Search size={19} /><input aria-label="Cari materi atau isi kartu" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari materi atau isi kartu" />{search && <button className="icon-button" onClick={() => setSearch('')} aria-label="Hapus pencarian"><X size={16} /></button>}</div>
+          <button className="button" aria-label="Impor JSON" onClick={onOpenJsonImport}><FileCode size={18} /><span>Impor JSON</span></button>
           <button className="button backup-button" aria-label="Cadangkan" onClick={onOpenImportExport}><Download size={18} /><span>Cadangkan</span></button>
         </div>
         <div className="category-tabs" aria-label="Kategori materi">{categories.map(cat => <button key={cat} aria-pressed={category === cat} className={cat === category ? 'selected' : ''} onClick={() => setCategory(cat)}>{cat}</button>)}</div>
