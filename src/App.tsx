@@ -50,7 +50,7 @@ export function App() {
     return decks.find(d => d.id === activeDeckId) || decks[0] || null;
   }, [decks, activeDeckId]);
 
-  const handleSelectDeck = (deck: Deck, mode: 'flashcards' | 'quiz') => {
+  const handleSelectDeck = (deck: Deck, mode: 'flashcards' | 'quiz' | 'hybrid') => {
     setActiveDeckId(deck.id);
     navigate(mode);
   };
@@ -177,10 +177,11 @@ export function App() {
           />
         )}
 
-        {currentMode === 'flashcards' && activeDeck && (
+        {(currentMode === 'flashcards' || currentMode === 'hybrid') && activeDeck && (
           <FlashcardViewer
-            key={activeDeck.id}
+            key={`${activeDeck.id}-${currentMode}`}
             deck={activeDeck}
+            initialFilter={currentMode === 'hybrid' ? 'all' : 'flashcard'}
             onBack={() => navigate('deck-select')}
             onUpdateDeck={handleUpdateDeckFromStudy}
             onStartQuiz={() => navigate('quiz')}
@@ -210,7 +211,7 @@ export function App() {
         <BottomNav
           currentMode={currentMode}
           onNavigate={mode => {
-            if ((mode === 'flashcards' || mode === 'quiz') && !activeDeckId && decks.length > 0) {
+            if ((mode === 'flashcards' || mode === 'quiz' || mode === 'hybrid') && !activeDeckId && decks.length > 0) {
               setActiveDeckId(decks[0].id);
             }
             navigate(mode);

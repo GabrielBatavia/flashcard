@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Plus, ArrowUpRight, Ellipsis, Pencil, Trash2, Layers, Download, X, ListChecks, BookOpen, FileCode } from 'lucide-react';
+import { Search, Plus, ArrowUpRight, Ellipsis, Pencil, Trash2, Layers, Download, X, ListChecks, BookOpen, FileCode, Zap } from 'lucide-react';
 import type { Deck } from '../types';
 import { useDialog } from './useDialog';
 import { usePresence } from './usePresence';
 
 interface DeckListProps {
   decks: Deck[];
-  onSelectDeck: (deck: Deck, mode: 'flashcards' | 'quiz') => void;
+  onSelectDeck: (deck: Deck, mode: 'flashcards' | 'quiz' | 'hybrid') => void;
   onEditDeck: (deck: Deck) => void;
   onCreateDeck: () => void;
   onDeleteDeck: (deckId: string) => void;
@@ -88,14 +88,52 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
                 <p>{deck.description || 'Materi siap untuk dipelajari.'}</p>
               </div>
               <div className="deck-progress"><div><span>{count} materi dipahami</span><span>{progress}%</span></div><progress max="100" value={progress} aria-label={`Pemahaman ${deck.title}`} /></div>
-              <div className="deck-actions">
-                <button className="study-button" disabled={!deck.cards.length} onClick={() => onSelectDeck(deck, 'flashcards')}>
-                  <BookOpen size={17} />{isHybrid ? 'Mode Alur' : 'Pelajari'}<ArrowUpRight size={17} />
-                </button>
-                <button className="quiz-button" disabled={deck.cards.length < 2} title={deck.cards.length < 2 ? 'Tambahkan minimal 2 kartu untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
-                  <ListChecks size={17} />Kuis
-                </button>
-              </div>
+              {isHybrid ? (
+                <div className="deck-actions-hybrid">
+                  <button 
+                    className="hybrid-primary-btn" 
+                    disabled={!deck.cards.length} 
+                    onClick={() => onSelectDeck(deck, 'hybrid')}
+                    title="Mulai Mode Gabungan: Flashcard dan Kuis sesuai urutan alur"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap size={17} className="text-amber-500 fill-amber-500 shrink-0" />
+                      <span className="font-bold">Mode Gabungan</span>
+                    </div>
+                    <span className="hybrid-tag">Alur Campuran</span>
+                    <ArrowUpRight size={17} className="arrow-icon ml-auto opacity-70" />
+                  </button>
+                  <div className="deck-sub-actions">
+                    <button 
+                      className="sub-action-btn" 
+                      disabled={flashcardCount === 0} 
+                      onClick={() => onSelectDeck(deck, 'flashcards')}
+                      title="Pelajari hanya kartu Flashcard"
+                    >
+                      <BookOpen size={15} />
+                      <span>Flashcard ({flashcardCount})</span>
+                    </button>
+                    <button 
+                      className="sub-action-btn" 
+                      disabled={quizCount === 0} 
+                      onClick={() => onSelectDeck(deck, 'quiz')}
+                      title="Kerjakan hanya Kuis"
+                    >
+                      <ListChecks size={15} />
+                      <span>Kuis ({quizCount})</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="deck-actions">
+                  <button className="study-button" disabled={!deck.cards.length} onClick={() => onSelectDeck(deck, 'flashcards')}>
+                    <BookOpen size={17} />Pelajari<ArrowUpRight size={17} />
+                  </button>
+                  <button className="quiz-button" disabled={deck.cards.length < 2} title={deck.cards.length < 2 ? 'Tambahkan minimal 2 kartu untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
+                    <ListChecks size={17} />Kuis
+                  </button>
+                </div>
+              )}
             </article>
           );
         })}</div> : <div className="empty-state"><Layers size={32} /><h3>{decks.length ? 'Materinya belum ketemu.' : 'Koleksi pertamamu dimulai di sini.'}</h3><p>{decks.length ? 'Coba kata kunci lain atau tampilkan semua kategori.' : 'Buat dek dan tambahkan hal yang ingin kamu ingat.'}</p><button className="button primary" onClick={decks.length ? () => { setSearch(''); setCategory('Semua'); } : onCreateDeck}>{decks.length ? 'Tampilkan semua materi' : 'Buat dek pertama'}</button></div>}

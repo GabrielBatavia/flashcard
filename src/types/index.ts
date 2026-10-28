@@ -22,7 +22,7 @@ export interface Deck {
   quizHighScore?: number;
 }
 
-export type StudyMode = 'deck-select' | 'flashcards' | 'quiz' | 'edit-deck';
+export type StudyMode = 'deck-select' | 'flashcards' | 'quiz' | 'hybrid' | 'edit-deck';
 
 export interface QuizQuestion {
   cardId: string;

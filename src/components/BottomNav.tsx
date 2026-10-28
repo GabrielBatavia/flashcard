@@ -16,11 +16,14 @@ export function BottomNav({ currentMode, onNavigate, hasActiveDeck, onNewDeck }:
   ];
   return (
     <nav className="dock glass" aria-label="Navigasi utama">
-      {tabs.map(({ mode, label, icon: Icon }) => (
-        <button key={mode} onClick={() => onNavigate(mode)} disabled={mode !== 'deck-select' && !hasActiveDeck} aria-current={currentMode === mode ? 'page' : undefined} className={`dock-item ${currentMode === mode ? 'is-active' : ''}`}>
-          <Icon size={22} /><span>{label}</span>
-        </button>
-      ))}
+      {tabs.map(({ mode, label, icon: Icon }) => {
+        const isActive = currentMode === mode || (mode === 'flashcards' && currentMode === 'hybrid');
+        return (
+          <button key={mode} onClick={() => onNavigate(mode)} disabled={mode !== 'deck-select' && !hasActiveDeck} aria-current={isActive ? 'page' : undefined} className={`dock-item ${isActive ? 'is-active' : ''}`}>
+            <Icon size={22} /><span>{label}</span>
+          </button>
+        );
+      })}
       <button className="dock-item dock-create" onClick={onNewDeck}><Plus size={22} /><span>Buat dek</span></button>
     </nav>
   );

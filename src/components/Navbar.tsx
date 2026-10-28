@@ -19,7 +19,7 @@ export function Navbar({ currentMode, activeDeck, onNavigate, soundEnabled, onTo
       <div className="topbar-inner">
         <button className="brand" onClick={() => onNavigate('deck-select')} aria-label="FlashQuiz, kembali ke materi">
           <span className="brand-icon">{currentMode === 'deck-select' ? <BookOpen size={22} /> : <ChevronLeft size={24} />}</span>
-          <span><strong>FlashQuiz</strong><small>{currentMode === 'deck-select' ? 'Ruang belajarmu' : currentMode === 'edit-deck' ? 'Editor materi' : activeDeck?.title}</small></span>
+          <span><strong>FlashQuiz</strong><small>{currentMode === 'deck-select' ? 'Ruang belajarmu' : currentMode === 'edit-deck' ? 'Editor materi' : currentMode === 'hybrid' ? `⚡ Gabungan: ${activeDeck?.title}` : activeDeck?.title}</small></span>
         </button>
         <div className="toolbar glass">
           <button className="icon-button" onClick={onOpenStats} title="Statistik belajar" aria-label="Statistik belajar"><ChartNoAxesColumn size={20} /></button>
