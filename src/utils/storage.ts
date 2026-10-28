@@ -5,6 +5,47 @@ const STORAGE_KEY_DECKS = 'flashquiz_decks_v1';
 const STORAGE_KEY_HISTORY = 'flashquiz_quiz_history_v1';
 const STORAGE_KEY_THEME = 'flashquiz_theme_mode';
 
+export const SAMPLE_HYBRID_JSON = `{
+  "title": "Pemrograman JavaScript Modern",
+  "description": "Flashcard materi inti diselingi kuis uji pemahaman di tengah alur belajar",
+  "category": "Pemrograman",
+  "color": "from-emerald-500 to-teal-600",
+  "items": [
+    {
+      "type": "flashcard",
+      "front": "Apa itu Closure di JavaScript?",
+      "back": "Fungsi yang mengingat dan mengakses variabel dari lexical scope induknya bahkan setelah fungsi induk selesai dieksekusi.",
+      "hint": "Lexical Scope"
+    },
+    {
+      "type": "flashcard",
+      "front": "Apa perbedaan let dan var?",
+      "back": "let memiliki block scope dan temporal dead zone, sedangkan var memiliki function scope dan di-hoist tanpa TDZ.",
+      "hint": "Block scope vs Function scope"
+    },
+    {
+      "type": "quiz",
+      "question": "Manakah deklarasi variabel yang TIDAK mengalami Temporal Dead Zone (TDZ)?",
+      "options": ["let", "const", "var", "semua mengalami TDZ"],
+      "answer": "var",
+      "explanation": "var di-hoist dengan nilai default undefined, sedangkan let dan const berada di TDZ sebelum baris deklarasinya dieksekusi."
+    },
+    {
+      "type": "flashcard",
+      "front": "Apa fungsi Promise.all()?",
+      "back": "Menjalankan beberapa promise secara paralel dan menunggu semuanya resolve (atau langsung reject jika salah satu gagal).",
+      "hint": "Asynchronous concurrency"
+    },
+    {
+      "type": "quiz",
+      "question": "Apa output default dari fungsi async?",
+      "options": ["Promise", "Undefined", "Object", "Function"],
+      "answer": "Promise",
+      "explanation": "Fungsi async selalu membungkus nilai kembaliannya ke dalam Promise (Promise.resolve)."
+    }
+  ]
+}`;
+
 export const SAMPLE_QUIZ_JSON = `{
   "title": "Kuis Cerdas Cermat",
   "description": "Latihan soal pilihan ganda sains dan pengetahuan umum",
@@ -206,8 +247,20 @@ function normalizeCard(rawCard: Record<string, unknown>, index: number): Flashca
   const hint = rawCard.hint ?? rawCard.petunjuk ?? rawCard.clue;
   const explanation = rawCard.explanation ?? rawCard.pembahasan ?? rawCard.penjelasan ?? rawCard.alasan;
 
+  // Explicit or inferred item type
+  const rawType = String(rawCard.type ?? rawCard.tipe ?? rawCard.kind ?? '').toLowerCase();
+  let type: 'flashcard' | 'quiz' = 'flashcard';
+  if (rawType === 'quiz' || rawType === 'kuis') {
+    type = 'quiz';
+  } else if (rawType === 'flashcard' || rawType === 'kartu') {
+    type = 'flashcard';
+  } else if (options && options.length >= 2) {
+    type = 'quiz';
+  }
+
   return {
     id: (rawCard.id as string) || `c-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+    type,
     front,
     back,
     options,
@@ -249,16 +302,18 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
       throw new Error('Array JSON kosong.');
     }
 
-    // Check if it's an array of Decks (each item has 'title' and ('cards' or 'questions' or 'soal'))
+    // Check if it's an array of Decks (each item has 'title' and ('items' or 'cards' or 'questions' or 'soal'))
     const looksLikeMultiDeck = parsed.some(
-      item => item && typeof item === 'object' && 'title' in item && ('cards' in item || 'questions' in item || 'soal' in item || 'quiz' in item)
+      item => item && typeof item === 'object' && 'title' in item && ('items' in item || 'cards' in item || 'questions' in item || 'soal' in item || 'quiz' in item)
     );
 
     if (looksLikeMultiDeck) {
       const decks: Deck[] = [];
       parsed.forEach((rawDeck, dIdx) => {
         if (!rawDeck || typeof rawDeck !== 'object') return;
-        const rawCards = Array.isArray(rawDeck.cards)
+        const rawCards = Array.isArray(rawDeck.items)
+          ? rawDeck.items
+          : Array.isArray(rawDeck.cards)
           ? rawDeck.cards
           : Array.isArray(rawDeck.questions)
           ? rawDeck.questions
@@ -295,7 +350,7 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
       return { type: 'multi-deck', decks };
     }
 
-    // Otherwise, treat as an array of Cards / Questions!
+    // Otherwise, treat as an array of Cards / Questions / Items!
     const cards: Flashcard[] = [];
     parsed.forEach((item, idx) => {
       const norm = normalizeCard(item as Record<string, unknown>, idx);
@@ -309,15 +364,21 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
     return { type: 'cards', cards };
   }
 
-  // Case 2: Single Deck Object { title, description, category, color, questions/cards }
+  // Case 2: Single Deck Object { title, description, category, color, items/questions/cards }
   if (parsed && typeof parsed === 'object') {
     const rawObj = parsed as Record<string, unknown>;
 
-    // Find cards / questions array
-    const rawCards = Array.isArray(rawObj.cards)
+    // Find cards / items / questions array
+    const rawCards = Array.isArray(rawObj.items)
+      ? rawObj.items
+      : Array.isArray(rawObj.cards)
       ? rawObj.cards
       : Array.isArray(rawObj.questions)
       ? rawObj.questions
+      : Array.isArray(rawObj.content)
+      ? rawObj.content
+      : Array.isArray(rawObj.materi)
+      ? rawObj.materi
       : Array.isArray(rawObj.soal)
       ? rawObj.soal
       : Array.isArray(rawObj.quiz)
@@ -329,7 +390,7 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
       : null;
 
     if (!rawCards) {
-      throw new Error('Objek dek harus memiliki daftar pertanyaan (properti "questions" atau "cards").');
+      throw new Error('Objek dek harus memiliki daftar isi materi (properti "items", "cards", atau "questions").');
     }
 
     const cards: Flashcard[] = [];

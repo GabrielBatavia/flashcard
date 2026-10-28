@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { 
   X, FileCode, Upload, Copy, Check, Sparkles, HelpCircle, 
-  AlertCircle, ArrowRight, Wand2, ListChecks, CreditCard, Bot 
+  AlertCircle, ArrowRight, Wand2, ListChecks, CreditCard, Bot, Zap
 } from 'lucide-react';
 import type { Flashcard, Deck } from '../types';
-import { useDialog } from './useDialog';
-import { usePresence } from './usePresence';
 import { 
   parseFlexibleDeckJson, 
   SAMPLE_DECK_JSON, 
-  SAMPLE_QUIZ_JSON 
+  SAMPLE_QUIZ_JSON,
+  SAMPLE_HYBRID_JSON
 } from '../utils/storage';
+import { usePresence } from './usePresence';
+import { useDialog } from './useDialog';
 
 interface JsonImportModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
   const { present, closing } = usePresence(isOpen);
   const dialogRef = useDialog(present, onClose);
   const [activeTab, setActiveTab] = useState<'input' | 'guide'>('input');
-  const [guideMode, setGuideMode] = useState<'quiz' | 'flashcard'>('quiz');
+  const [guideMode, setGuideMode] = useState<'hybrid' | 'quiz' | 'flashcard'>('hybrid');
   const [jsonText, setJsonText] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedFormat, setCopiedFormat] = useState(false);
@@ -74,10 +75,17 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
         onImportDeck(result.deck);
         onClose();
       } else if (result.type === 'cards') {
-        const hasQuizOptions = result.cards.some(c => c.options && c.options.length >= 2);
+        const hasQuizOptions = result.cards.some(c => c.type === 'quiz' || (c.options && c.options.length >= 2));
+        const hasFlashcards = result.cards.some(c => !(c.type === 'quiz' || (c.options && c.options.length >= 2)));
+        const title = hasQuizOptions && hasFlashcards 
+          ? 'Dek Alur Gabungan Baru' 
+          : hasQuizOptions 
+          ? 'Dek Kuis Baru' 
+          : 'Dek Flashcard Baru';
+
         onImportDeck({
-          title: hasQuizOptions ? 'Dek Kuis Baru' : 'Dek Impor Baru',
-          description: `Dek berisi ${result.cards.length} kartu/soal`,
+          title,
+          description: `Dek berisi ${result.cards.length} materi/soal`,
           cards: result.cards,
         });
         onClose();
@@ -102,6 +110,11 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
     }
   };
 
+  const handleLoadHybridSample = () => {
+    setJsonText(SAMPLE_HYBRID_JSON);
+    setErrorMsg(null);
+  };
+
   const handleLoadQuizSample = () => {
     setJsonText(SAMPLE_QUIZ_JSON);
     setErrorMsg(null);
@@ -112,13 +125,25 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
     setErrorMsg(null);
   };
 
-  const currentSample = guideMode === 'quiz' ? SAMPLE_QUIZ_JSON : SAMPLE_DECK_JSON;
+  const currentSample = 
+    guideMode === 'hybrid' 
+      ? SAMPLE_HYBRID_JSON 
+      : guideMode === 'quiz' 
+      ? SAMPLE_QUIZ_JSON 
+      : SAMPLE_DECK_JSON;
 
   const handleCopyCurrentFormat = () => {
     navigator.clipboard.writeText(currentSample);
     setCopiedFormat(true);
     setTimeout(() => setCopiedFormat(false), 2000);
   };
+
+  const hybridPrompt = `Buatkan materi belajar campuran (gabungan flashcard dan diselingi soal kuis pilihan ganda) tentang: [TULIS MATERI KAMU DI SINI, contoh: 15 Konsep JavaScript Modern / Biologi Sel SMA]
+
+Atur urutannya: buat beberapa flashcard materi terlebih dahulu, lalu selingi dengan kuis uji pemahaman di tengah-tengah alur, lalu lanjutkan flashcard berikutnya.
+
+Keluarkan HANYA format JSON murni yang valid persis seperti ini:
+${SAMPLE_HYBRID_JSON}`;
 
   const quizPrompt = `Buatkan kuis pilihan ganda 10 soal tentang: [TULIS MATERI KAMU DI SINI, contoh: Biologi Sel / Sejarah Kemerdekaan Indonesia]
 
@@ -130,7 +155,12 @@ ${SAMPLE_QUIZ_JSON}`;
 Keluarkan HANYA format JSON murni yang valid persis seperti format ini:
 ${SAMPLE_DECK_JSON}`;
 
-  const activePrompt = guideMode === 'quiz' ? quizPrompt : flashcardPrompt;
+  const activePrompt = 
+    guideMode === 'hybrid' 
+      ? hybridPrompt 
+      : guideMode === 'quiz' 
+      ? quizPrompt 
+      : flashcardPrompt;
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(activePrompt);
@@ -139,8 +169,19 @@ ${SAMPLE_DECK_JSON}`;
   };
 
   return (
-    <div data-closing={closing} className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={dialogRef} inert={closing} role="dialog" aria-modal="true" aria-label="Impor JSON" tabIndex={-1} className="sheet-panel rounded-3xl max-w-lg w-full border flex flex-col">
+    <div
+      data-closing={closing}
+      className="sheet-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={dialogRef}
+        inert={closing}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-json-title"
+        className="sheet-panel bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col max-h-[92vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/80">
           <div className="flex items-center gap-2.5">
@@ -148,17 +189,16 @@ ${SAMPLE_DECK_JSON}`;
               <FileCode className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                Impor Dek & Kuis via JSON ⚡
+              <h3 id="import-json-title" className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                Impor Dek &amp; Alur Belajar via JSON ⚡
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Buat dek flashcard atau kuis pilihan ganda secara otomatis
+                Mendukung Flashcard, Kuis, atau Mode Gabungan (Alur Campuran)
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Tutup impor JSON"
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -220,7 +260,17 @@ ${SAMPLE_DECK_JSON}`;
                 />
               </label>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleLoadHybridSample}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-xl transition-colors border border-purple-200 dark:border-purple-800"
+                  title="Isi contoh JSON campuran flashcard + kuis"
+                >
+                  <Zap className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Contoh Gabungan</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleLoadQuizSample}
@@ -228,7 +278,7 @@ ${SAMPLE_DECK_JSON}`;
                   title="Isi contoh JSON soal kuis pilihan ganda"
                 >
                   <ListChecks className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Contoh Kuis</span>
+                  <span>Kuis</span>
                 </button>
 
                 <button
@@ -238,7 +288,7 @@ ${SAMPLE_DECK_JSON}`;
                   title="Isi contoh JSON flashcard tanya jawab"
                 >
                   <CreditCard className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Contoh Flashcard</span>
+                  <span>Flashcard</span>
                 </button>
               </div>
             </div>
@@ -249,13 +299,13 @@ ${SAMPLE_DECK_JSON}`;
                 rows={9}
                 value={jsonText}
                 onChange={e => setJsonText(e.target.value)}
-                placeholder={`Tempel kode JSON di sini...\n\nContoh Soal Kuis:\n{\n  "title": "Kuis Sains",\n  "questions": [\n    {\n      "question": "Berapa 10 x 10?",\n      "options": ["50", "100", "150", "200"],\n      "answer": "100",\n      "explanation": "10 dikali 10 sama dengan 100."\n    }\n  ]\n}`}
+                placeholder={`Tempel kode JSON di sini...\n\nBisa format campuran:\n{\n  "title": "Materi Gabungan",\n  "items": [\n    { "type": "flashcard", "front": "Istilah 1", "back": "Arti 1" },\n    { "type": "quiz", "question": "Soal kuis?", "options": ["A", "B", "C", "D"], "answer": "A" }\n  ]\n}`}
                 className="w-full p-3 font-mono text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
               />
             </div>
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-              💡 <em>Mendukung dua mode:</em> <strong>Soal Kuis</strong> (dengan <code>options</code> &amp; <code>explanation</code>) atau <strong>Flashcard</strong> (dengan <code>front</code> &amp; <code>back</code>).
+              ⚡ <em>Fleksibel:</em> Urutan dalam JSON akan dipatuhi 100%. Kamu bisa menyusun 20 flashcard, diselingi 1 kuis, lalu 10 flashcard lagi!
             </p>
 
             <button
@@ -274,38 +324,84 @@ ${SAMPLE_DECK_JSON}`;
         {activeTab === 'guide' && (
           <div className="space-y-3 overflow-y-auto pr-1 flex-1 text-xs">
             {/* Guide Sub-Toggle */}
-            <div className="flex rounded-xl bg-slate-100 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+            <div className="grid grid-cols-3 rounded-xl bg-slate-100 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-slate-700 text-xs font-semibold gap-1">
+              <button
+                onClick={() => setGuideMode('hybrid')}
+                className={`py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 truncate ${
+                  guideMode === 'hybrid'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                }`}
+              >
+                <Zap className="w-3 h-3 shrink-0" />
+                <span className="truncate">⚡ Gabungan</span>
+              </button>
+
               <button
                 onClick={() => setGuideMode('quiz')}
-                className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 truncate ${
                   guideMode === 'quiz'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
-                <ListChecks className="w-3.5 h-3.5" />
-                <span>Format Soal Kuis (Pilihan Ganda)</span>
+                <ListChecks className="w-3 h-3 shrink-0" />
+                <span className="truncate">🎯 Kuis</span>
               </button>
+
               <button
                 onClick={() => setGuideMode('flashcard')}
-                className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 truncate ${
                   guideMode === 'flashcard'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
                 }`}
               >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>Format Flashcard Biasa</span>
+                <CreditCard className="w-3 h-3 shrink-0" />
+                <span className="truncate">🃏 Flashcard</span>
               </button>
             </div>
 
-            {/* Guide Content: QUIZ */}
-            {guideMode === 'quiz' ? (
+            {/* Guide Content: HYBRID / GABUNGAN */}
+            {guideMode === 'hybrid' && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-purple-500" />
+                    Format Gabungan (Flashcard + Kuis Diselingi)
+                  </span>
+                  <button
+                    onClick={handleCopyCurrentFormat}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60 rounded-lg flex items-center gap-1 transition-colors"
+                  >
+                    {copiedFormat ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedFormat ? 'Tersalin!' : 'Salin JSON Gabungan'}</span>
+                  </button>
+                </div>
+
+                <div className="p-3 bg-slate-900 text-slate-100 rounded-2xl overflow-x-auto font-mono text-[11px] leading-relaxed">
+                  <pre>{SAMPLE_HYBRID_JSON}</pre>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl space-y-1.5 text-[11px] border border-slate-200 dark:border-slate-800">
+                  <p className="font-bold text-slate-800 dark:text-slate-200">Cara Kerja Mode Gabungan:</p>
+                  <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1 pl-1">
+                    <li>Gunakan array <code>items</code> di dalam objek JSON.</li>
+                    <li>Untuk kartu flashcard: sertakan <code>&quot;type&quot;: &quot;flashcard&quot;</code>, <code>&quot;front&quot;</code>, dan <code>&quot;back&quot;</code>.</li>
+                    <li>Untuk soal kuis pilihan ganda: sertakan <code>&quot;type&quot;: &quot;quiz&quot;</code>, <code>&quot;question&quot;</code>, <code>&quot;options&quot;</code> (4 opsi), dan <code>&quot;answer&quot;</code>.</li>
+                    <li>Saat kamu belajar, sistem akan menampilkan flashcard untuk dihafal, dan begitu tiba di kartu kuis, kuis interaktif akan muncul otomatis!</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Guide Content: QUIZ ONLY */}
+            {guideMode === 'quiz' && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-emerald-500" />
-                    Struktur JSON Soal Kuis (Pilihan Ganda)
+                    Struktur JSON Soal Kuis Saja
                   </span>
                   <button
                     onClick={handleCopyCurrentFormat}
@@ -320,24 +416,26 @@ ${SAMPLE_DECK_JSON}`;
                   <pre>{SAMPLE_QUIZ_JSON}</pre>
                 </div>
 
-                {/* Explanation of keys */}
                 <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl space-y-1.5 text-[11px] border border-slate-200 dark:border-slate-800">
-                  <p className="font-bold text-slate-800 dark:text-slate-200">Keterangan Properti Soal Kuis:</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">Keterangan Properti Kuis:</p>
                   <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1 pl-1">
-                    <li><code>question</code> (Wajib): Kalimat pertanyaan / soal kuis.</li>
-                    <li><code>options</code> (Wajib): Array berisi 4 pilihan jawaban yang akan muncul di layar.</li>
-                    <li><code>answer</code> (Wajib): Jawaban yang benar. Bisa dituliskan <strong>teks jawabannya langsung</strong> (contoh: <code>&quot;Jakarta&quot;</code>), atau huruf (contoh: <code>&quot;A&quot;</code>), atau index angka (contoh: <code>0</code>).</li>
-                    <li><code>explanation</code> (Opsional): Pembahasan detail yang muncul saat soal dijawab &amp; di evaluasi akhir.</li>
+                    <li><code>questions</code>: Array berisi soal kuis.</li>
+                    <li><code>question</code>: Kalimat pertanyaan.</li>
+                    <li><code>options</code>: 4 pilihan jawaban.</li>
+                    <li><code>answer</code>: Jawaban benar (teks langsung, huruf &quot;A&quot;-&quot;D&quot;, atau index 0-3).</li>
+                    <li><code>explanation</code>: Pembahasan (opsional).</li>
                   </ul>
                 </div>
               </div>
-            ) : (
-              /* Guide Content: FLASHCARD */
+            )}
+
+            {/* Guide Content: FLASHCARD ONLY */}
+            {guideMode === 'flashcard' && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-indigo-500" />
-                    Struktur JSON Flashcard (Tanya - Jawab)
+                    Struktur JSON Flashcard Saja
                   </span>
                   <button
                     onClick={handleCopyCurrentFormat}
@@ -364,11 +462,11 @@ ${SAMPLE_DECK_JSON}`;
             )}
 
             {/* Prompt ChatGPT Box */}
-            <div className="p-3.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl space-y-2">
+            <div className="p-3.5 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-blue-950/40 border border-purple-200 dark:border-purple-900/60 rounded-2xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-indigo-900 dark:text-indigo-200 text-xs flex items-center gap-1.5">
-                  <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  Minta ChatGPT Buatkan Soal Otomatis
+                  <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  Minta ChatGPT Buatkan Materi Otomatis
                 </span>
                 <button
                   onClick={handleCopyPrompt}
@@ -379,7 +477,7 @@ ${SAMPLE_DECK_JSON}`;
                 </button>
               </div>
               <p className="text-[11px] text-indigo-800/80 dark:text-indigo-300 leading-relaxed">
-                Salin prompt di atas ke ChatGPT untuk membuat soal kuis topik apa pun. Setelah ChatGPT membalas, copy hasilnya dan paste di tab <strong>Tempel / Unggah JSON</strong>!
+                Salin prompt di atas ke ChatGPT untuk membuat materi belajar sesuai format yang kamu pilih. Hasil balasan ChatGPT tinggal kamu copy dan paste di tab <strong>Tempel / Unggah JSON</strong>!
               </p>
             </div>
           </div>

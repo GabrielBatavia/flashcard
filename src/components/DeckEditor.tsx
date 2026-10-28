@@ -347,9 +347,13 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
                 <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
                   #{idx + 1}
                 </span>
-                {card.options && card.options.length >= 2 && (
+                {card.type === 'quiz' || (card.options && card.options.length >= 2) ? (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    🎯 Kuis ({card.options.length} Opsi)
+                    🎯 Soal Kuis {card.options ? `(${card.options.length} Opsi)` : ''}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    🃏 Flashcard
                   </span>
                 )}
               </div>

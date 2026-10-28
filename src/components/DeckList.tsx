@@ -66,6 +66,9 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
         {filtered.length ? <div className="deck-grid">{filtered.map((deck, index) => {
           const count = deck.cards.filter(c => c.mastered).length;
           const progress = deck.cards.length ? Math.round(count / deck.cards.length * 100) : 0;
+          const quizCount = deck.cards.filter(c => c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)).length;
+          const flashcardCount = deck.cards.length - quizCount;
+          const isHybrid = quizCount > 0 && flashcardCount > 0;
           return (
             <article className="deck-card" key={deck.id} style={{ animationDelay: `${Math.min(index, 5) * 40}ms` }}>
               <div className="deck-topline"><span className={`deck-symbol bg-gradient-to-br ${deck.color || 'from-blue-500 to-cyan-600'}`}><Layers size={23} /></span><span className="deck-category">{deck.category || 'Umum'}</span>
@@ -73,9 +76,26 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
                   {openMenu === deck.id && <div className="menu-popover"><button onClick={() => { setOpenMenu(null); onEditDeck(deck); }}><Pencil size={16} />Edit dek</button><button className="danger" onClick={() => { setOpenMenu(null); setDeleteCandidate(deck); setDeleteOpen(true); }}><Trash2 size={16} />Hapus dek</button></div>}
                 </div>
               </div>
-              <div className="deck-copy"><span className="deck-index">{String(index + 1).padStart(2, '0')} / {deck.cards.length} kartu</span><h3>{deck.title}</h3><p>{deck.description || 'Materi siap untuk dipelajari.'}</p></div>
-              <div className="deck-progress"><div><span>{count} kartu dipahami</span><span>{progress}%</span></div><progress max="100" value={progress} aria-label={`Pemahaman ${deck.title}`} /></div>
-              <div className="deck-actions"><button className="study-button" disabled={!deck.cards.length} onClick={() => onSelectDeck(deck, 'flashcards')}><BookOpen size={17} />Pelajari<ArrowUpRight size={17} /></button><button className="quiz-button" disabled={deck.cards.length < 2} title={deck.cards.length < 2 ? 'Tambahkan minimal 2 kartu untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}><ListChecks size={17} />Kuis</button></div>
+              <div className="deck-copy">
+                <span className="deck-index">
+                  {isHybrid 
+                    ? `${flashcardCount} Kartu • ${quizCount} Kuis (Gabungan)` 
+                    : quizCount > 0 
+                    ? `${quizCount} Soal Kuis` 
+                    : `${deck.cards.length} kartu`}
+                </span>
+                <h3>{deck.title}</h3>
+                <p>{deck.description || 'Materi siap untuk dipelajari.'}</p>
+              </div>
+              <div className="deck-progress"><div><span>{count} materi dipahami</span><span>{progress}%</span></div><progress max="100" value={progress} aria-label={`Pemahaman ${deck.title}`} /></div>
+              <div className="deck-actions">
+                <button className="study-button" disabled={!deck.cards.length} onClick={() => onSelectDeck(deck, 'flashcards')}>
+                  <BookOpen size={17} />{isHybrid ? 'Mode Alur' : 'Pelajari'}<ArrowUpRight size={17} />
+                </button>
+                <button className="quiz-button" disabled={deck.cards.length < 2} title={deck.cards.length < 2 ? 'Tambahkan minimal 2 kartu untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
+                  <ListChecks size={17} />Kuis
+                </button>
+              </div>
             </article>
           );
         })}</div> : <div className="empty-state"><Layers size={32} /><h3>{decks.length ? 'Materinya belum ketemu.' : 'Koleksi pertamamu dimulai di sini.'}</h3><p>{decks.length ? 'Coba kata kunci lain atau tampilkan semua kategori.' : 'Buat dek dan tambahkan hal yang ingin kamu ingat.'}</p><button className="button primary" onClick={decks.length ? () => { setSearch(''); setCategory('Semua'); } : onCreateDeck}>{decks.length ? 'Tampilkan semua materi' : 'Buat dek pertama'}</button></div>}

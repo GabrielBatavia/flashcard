@@ -1,5 +1,6 @@
 export interface Flashcard {
   id: string;
+  type?: 'flashcard' | 'quiz'; // 'flashcard' atau 'quiz' untuk mode alur gabungan
   front: string; // Question / Term / Soal
   back: string;  // Answer / Definition / Jawaban Benar
   hint?: string;
