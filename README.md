@@ -38,6 +38,18 @@ Aplikasi web modern, cepat, dan responsif untuk belajar menggunakan **Flashcard 
 
 ---
 
+## Latihan menulis
+
+Pilih **Impor JSON → Contoh Menulis → Impor & Buat Dek Otomatis**, lalu buka **Latihan menulis** pada dek. Contoh siap impor tersedia di `public/examples/handwriting-zh-TW.json`.
+
+- Setiap kartu menulis menggunakan `"type": "handwriting"`, `front` (pertanyaan), `back` (jawaban), serta `hint` dan `explanation` opsional.
+- `back` dapat berisi satu karakter, kata, atau kalimat. Konten tidak diterjemahkan atau dikonversi.
+- `language` opsional di tingkat dek. `"language": "zh-TW"` memilih konteks tampilan Mandarin tradisional Taiwan. Tanpa field ini, tampilan tetap netral. Bahasa lain juga dapat digunakan.
+- Tulis dengan jari, stylus, atau mouse. Urungkan goresan atau hapus semua sebelum membuka jawaban.
+- Tekan **Lihat jawaban**, bandingkan dengan tulisan yang masih terlihat, lalu pilih **Benar** atau **Salah**. Tidak ada AI, OCR, atau pemeriksaan urutan goresan.
+- Nilai dan progres tersimpan di perangkat. Goresan hanya berlaku untuk soal aktif dan tidak disimpan setelah berpindah soal atau memuat ulang halaman.
+- Latihan menulis mendukung satu kartu, ringkasan hasil, dan pengulangan soal salah. Kartu menulis juga tampil sesuai urutan dalam Mode Gabungan; kuis pilihan ganda mengecualikannya.
+
 ## 🚀 Menjalankan di Komputer Lokal
 
 1. **Install dependensi:**

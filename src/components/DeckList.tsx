@@ -6,7 +6,7 @@ import { usePresence } from './usePresence';
 
 interface DeckListProps {
   decks: Deck[];
-  onSelectDeck: (deck: Deck, mode: 'flashcards' | 'quiz' | 'hybrid') => void;
+  onSelectDeck: (deck: Deck, mode: 'flashcards' | 'quiz' | 'hybrid' | 'handwriting') => void;
   onEditDeck: (deck: Deck) => void;
   onCreateDeck: () => void;
   onDeleteDeck: (deckId: string) => void;
@@ -67,7 +67,8 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
           const count = deck.cards.filter(c => c.mastered).length;
           const progress = deck.cards.length ? Math.round(count / deck.cards.length * 100) : 0;
           const quizCount = deck.cards.filter(c => c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)).length;
-          const flashcardCount = deck.cards.length - quizCount;
+          const writingCount = deck.cards.filter(c => c.type === 'handwriting').length;
+          const flashcardCount = deck.cards.length - quizCount - writingCount;
           const isHybrid = quizCount > 0 && flashcardCount > 0;
           return (
             <article className="deck-card" key={deck.id} style={{ animationDelay: `${Math.min(index, 5) * 40}ms` }}>
@@ -88,6 +89,7 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
                 <p>{deck.description || 'Materi siap untuk dipelajari.'}</p>
               </div>
               <div className="deck-progress"><div><span>{count} materi dipahami</span><span>{progress}%</span></div><progress max="100" value={progress} aria-label={`Pemahaman ${deck.title}`} /></div>
+              {writingCount > 0 && <button className="button primary w-full mb-3" onClick={() => onSelectDeck(deck, 'handwriting')}><Pencil size={17} />Latihan menulis ({writingCount})</button>}
               {isHybrid ? (
                 <div className="deck-actions-hybrid">
                   <button 
@@ -126,10 +128,10 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
                 </div>
               ) : (
                 <div className="deck-actions">
-                  <button className="study-button" disabled={!deck.cards.length} onClick={() => onSelectDeck(deck, 'flashcards')}>
+                  <button className="study-button" disabled={!flashcardCount} onClick={() => onSelectDeck(deck, 'flashcards')}>
                     <BookOpen size={17} />Pelajari<ArrowUpRight size={17} />
                   </button>
-                  <button className="quiz-button" disabled={deck.cards.length < 2} title={deck.cards.length < 2 ? 'Tambahkan minimal 2 kartu untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
+                  <button className="quiz-button" disabled={deck.cards.length - writingCount < 2} title={deck.cards.length - writingCount < 2 ? 'Tambahkan minimal 2 kartu non-menulis untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
                     <ListChecks size={17} />Kuis
                   </button>
                 </div>

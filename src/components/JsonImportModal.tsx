@@ -8,6 +8,7 @@ import {
   parseFlexibleDeckJson, 
   SAMPLE_DECK_JSON, 
   SAMPLE_QUIZ_JSON,
+  SAMPLE_HANDWRITING_JSON,
   SAMPLE_HYBRID_JSON
 } from '../utils/storage';
 import { usePresence } from './usePresence';
@@ -17,6 +18,7 @@ interface JsonImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportDeck: (deckData: {
+    language?: string;
     title?: string;
     description?: string;
     category?: string;
@@ -35,7 +37,7 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
   const { present, closing } = usePresence(isOpen);
   const dialogRef = useDialog(present, onClose);
   const [activeTab, setActiveTab] = useState<'input' | 'guide'>('input');
-  const [guideMode, setGuideMode] = useState<'hybrid' | 'quiz' | 'flashcard'>('hybrid');
+  const [guideMode, setGuideMode] = useState<'hybrid' | 'quiz' | 'flashcard' | 'handwriting'>('hybrid');
   const [jsonText, setJsonText] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedFormat, setCopiedFormat] = useState(false);
@@ -96,6 +98,7 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
         } else {
           const first = result.decks[0];
           onImportDeck({
+            language: first.language,
             title: first.title,
             description: first.description,
             category: first.category,
@@ -126,7 +129,7 @@ export const JsonImportModal: React.FC<JsonImportModalProps> = ({
   };
 
   const currentSample = 
-    guideMode === 'hybrid' 
+    guideMode === 'handwriting' ? SAMPLE_HANDWRITING_JSON : guideMode === 'hybrid'
       ? SAMPLE_HYBRID_JSON 
       : guideMode === 'quiz' 
       ? SAMPLE_QUIZ_JSON 
@@ -156,7 +159,9 @@ Keluarkan HANYA format JSON murni yang valid persis seperti format ini:
 ${SAMPLE_DECK_JSON}`;
 
   const activePrompt = 
-    guideMode === 'hybrid' 
+    guideMode === 'handwriting'
+      ? `Buat latihan menulis tentang [MATERI]. Gunakan type handwriting, front untuk pertanyaan, back untuk jawaban, dan hint opsional. language opsional di tingkat dek; gunakan zh-TW hanya untuk Mandarin tradisional Taiwan. Jangan mengonversi bahasa lain. Keluarkan JSON seperti contoh:\n${SAMPLE_HANDWRITING_JSON}`
+      : guideMode === 'hybrid'
       ? hybridPrompt 
       : guideMode === 'quiz' 
       ? quizPrompt 
@@ -193,7 +198,7 @@ ${SAMPLE_DECK_JSON}`;
                 Impor Dek &amp; Alur Belajar via JSON ⚡
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Mendukung Flashcard, Kuis, atau Mode Gabungan (Alur Campuran)
+                Mendukung Flashcard, Kuis, Latihan Menulis, atau Mode Gabungan
               </p>
             </div>
           </div>
@@ -290,6 +295,7 @@ ${SAMPLE_DECK_JSON}`;
                   <CreditCard className="w-3.5 h-3.5 text-indigo-500" />
                   <span>Flashcard</span>
                 </button>
+                <button type="button" className="button" onClick={() => { setJsonText(SAMPLE_HANDWRITING_JSON); setErrorMsg(null); }}>Contoh Menulis</button>
               </div>
             </div>
 
@@ -324,7 +330,8 @@ ${SAMPLE_DECK_JSON}`;
         {activeTab === 'guide' && (
           <div className="space-y-3 overflow-y-auto pr-1 flex-1 text-xs">
             {/* Guide Sub-Toggle */}
-            <div className="grid grid-cols-3 rounded-xl bg-slate-100 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-slate-700 text-xs font-semibold gap-1">
+            <div className="grid grid-cols-2 rounded-xl bg-slate-100 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-slate-700 text-xs font-semibold gap-1">
+              <button className="button" aria-pressed={guideMode === 'handwriting'} onClick={() => setGuideMode('handwriting')}>Menulis</button>
               <button
                 onClick={() => setGuideMode('hybrid')}
                 className={`py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 truncate ${
@@ -363,6 +370,12 @@ ${SAMPLE_DECK_JSON}`;
             </div>
 
             {/* Guide Content: HYBRID / GABUNGAN */}
+            {guideMode === 'handwriting' && <div className="space-y-3">
+              <p>Gunakan type: handwriting dengan front dan back. Jawaban bisa satu karakter, kata, atau kalimat. language opsional; zh-TW memakai konteks Mandarin tradisional Taiwan. Isi jawaban tidak dikonversi.</p>
+              <pre className="overflow-x-auto p-3 bg-slate-900 text-slate-100 rounded-xl">{SAMPLE_HANDWRITING_JSON}</pre>
+              <button className="button" onClick={handleCopyCurrentFormat}>{copiedFormat ? 'Tersalin!' : 'Salin JSON Menulis'}</button>
+              <p>Tulis di layar, buka jawaban, lalu pilih Benar atau Salah. Penilaian manual tanpa pengenalan tulisan.</p>
+            </div>}
             {guideMode === 'hybrid' && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">

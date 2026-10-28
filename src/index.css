@@ -1,6 +1,22 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+.writing-viewer { max-width: 36rem; margin: auto; padding: 1rem 1rem 8rem; }
+.writing-progress, .writing-tools { display: flex; gap: .75rem; justify-content: space-between; flex-wrap: wrap; }
+.writing-progress { margin: 1.25rem 0; }
+.writing-tools > button { flex: 1; }
+.handwriting-card { display: flex; flex-direction: column; gap: 1rem; padding: 1.25rem; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 1.5rem; min-width: 0; }
+.handwriting-card h2 { font-size: 1.25rem; font-weight: 650; overflow-wrap: anywhere; }
+.handwriting-card summary { cursor: pointer; padding: .5rem 0; }
+.writing-instruction { color: var(--muted); font-size: .875rem; margin-top: .75rem; }
+.writing-pad { display: block; width: 100%; aspect-ratio: 5 / 4; background: var(--well); color: var(--ink); border: 1px solid var(--line); border-radius: .75rem; touch-action: none; user-select: none; cursor: crosshair; }
+.writing-guide { stroke: var(--muted); stroke-opacity: .25; stroke-dasharray: 6 6; }
+.writing-comparison { display: grid; gap: .75rem; }
+.writing-answer { font-size: 2.5rem; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.writing-answer:lang(zh-TW) { font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
+.handwriting-card .button { min-height: 44px; white-space: normal; }
+.handwriting-card button:disabled { opacity: .5; cursor: not-allowed; }
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --color-indigo-50: #eff6ff;

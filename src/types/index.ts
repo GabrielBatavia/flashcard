@@ -1,6 +1,6 @@
 export interface Flashcard {
   id: string;
-  type?: 'flashcard' | 'quiz'; // 'flashcard' atau 'quiz' untuk mode alur gabungan
+  type?: 'flashcard' | 'quiz' | 'handwriting';
   front: string; // Question / Term / Soal
   back: string;  // Answer / Definition / Jawaban Benar
   hint?: string;
@@ -11,6 +11,7 @@ export interface Flashcard {
 }
 
 export interface Deck {
+  language?: string;
   id: string;
   title: string;
   description: string;
@@ -22,7 +23,7 @@ export interface Deck {
   quizHighScore?: number;
 }
 
-export type StudyMode = 'deck-select' | 'flashcards' | 'quiz' | 'hybrid' | 'edit-deck';
+export type StudyMode = 'deck-select' | 'flashcards' | 'quiz' | 'hybrid' | 'handwriting' | 'edit-deck';
 
 export interface QuizQuestion {
   cardId: string;

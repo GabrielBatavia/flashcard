@@ -8,6 +8,7 @@ import type { Deck } from '../types';
 import { soundManager } from '../utils/sound';
 import confetti from 'canvas-confetti';
 import { useMotionStep } from './useMotionStep';
+import { HandwritingCard } from './HandwritingCard';
 
 interface FlashcardViewerProps {
   deck: Deck;
@@ -43,7 +44,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   const cards = useMemo(() => {
     let list = [...deck.cards];
     if (filterMode === 'flashcard') {
-      list = list.filter(c => !(c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)));
+      list = list.filter(c => c.type !== 'handwriting' && !(c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)));
     } else if (filterMode === 'quiz') {
       list = list.filter(c => c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2));
     } else if (filterMode === 'unmastered') {
@@ -63,6 +64,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   const isHybridDeck = hasQuizItems && hasFlashcardItems;
 
   const currentCard = cards[currentIndex];
+  const isCurrentWriting = currentCard?.type === 'handwriting';
 
   const isCurrentQuiz = Boolean(
     currentCard && (currentCard.type === 'quiz' || (Array.isArray(currentCard.options) && currentCard.options.length >= 2))
@@ -83,10 +85,10 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   }, [currentCard, isCurrentQuiz, deck.cards]);
 
   const handleFlip = useCallback(() => {
-    if (isMoving || isFinished || isCurrentQuiz) return;
+    if (isMoving || isFinished || isCurrentQuiz || isCurrentWriting) return;
     soundManager.playFlip();
     setIsFlipped(prev => !prev);
-  }, [isMoving, isFinished, isCurrentQuiz]);
+  }, [isMoving, isFinished, isCurrentQuiz, isCurrentWriting]);
 
   const advance = useCallback(() => {
     if (currentIndex < cards.length - 1) {
@@ -172,7 +174,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat || isMoving) return;
+      if (e.repeat || isMoving || isCurrentWriting) return;
       if (document.querySelector('[role="dialog"]') || (e.target instanceof HTMLElement && e.target.closest('button, input, textarea, select'))) return;
 
       if (isCurrentQuiz) {
@@ -205,7 +207,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFlip, handleNext, handlePrev, handleMarkMastery, isMoving, isCurrentQuiz, currentQuizOptions, currentQuizAnswer]);
+  }, [handleFlip, handleNext, handlePrev, handleMarkMastery, isMoving, isCurrentQuiz, isCurrentWriting, currentQuizOptions, currentQuizAnswer]);
 
   // Touch handlers for mobile swipe
   const onTouchStart = (e: React.TouchEvent) => {
@@ -494,7 +496,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       ) : (
         <div className="flex-1 flex flex-col justify-between">
           {/* RENDER CURRENT ITEM: QUIZ CHECKPOINT OR 3D FLASHCARD */}
-          {isCurrentQuiz ? (
+          {isCurrentWriting ? <HandwritingCard key={currentCard.id} card={currentCard} language={deck.language} disabled={isMoving} onRate={handleMarkMastery} /> : isCurrentQuiz ? (
             /* ================= INTERACTIVE IN-STREAM QUIZ CARD ================= */
             <div
               ref={cardRef}
@@ -714,7 +716,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
           {/* Bottom Action Controls */}
           <div className="mt-5 space-y-3">
             {/* Show Belum Paham / Sudah Paham only for Flashcard items */}
-            {!isCurrentQuiz && (
+            {!isCurrentQuiz && !isCurrentWriting && (
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => handleMarkMastery(false)}

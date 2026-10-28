@@ -5,6 +5,16 @@ const STORAGE_KEY_DECKS = 'flashquiz_decks_v1';
 const STORAGE_KEY_HISTORY = 'flashquiz_quiz_history_v1';
 const STORAGE_KEY_THEME = 'flashquiz_theme_mode';
 
+export const SAMPLE_HANDWRITING_JSON = JSON.stringify({
+  title: 'Latihan Menulis Mandarin',
+  language: 'zh-TW',
+  category: 'Bahasa',
+  cards: [
+    { type: 'handwriting', front: "Tulis karakter untuk 'kamu'", back: '你', hint: 'nǐ' },
+    { type: 'handwriting', front: "Tulis 'Saya suka minum teh'", back: '我喜歡喝茶。', hint: 'wǒ xǐhuān hē chá' },
+  ],
+}, null, 2);
+
 export const SAMPLE_HYBRID_JSON = `{
   "title": "Pemrograman JavaScript Modern",
   "description": "Flashcard materi inti diselingi kuis uji pemahaman di tengah alur belajar",
@@ -195,7 +205,8 @@ function normalizeCard(rawCard: Record<string, unknown>, index: number): Flashca
   ).trim();
 
   // Extract multiple choice options if available
-  const rawOpts = rawCard.options ?? rawCard.pilihan ?? rawCard.choices ?? rawCard.opsi;
+  const rawType = String(rawCard.type ?? rawCard.tipe ?? rawCard.kind ?? '').toLowerCase();
+  const rawOpts = rawType === 'handwriting' ? undefined : rawCard.options ?? rawCard.pilihan ?? rawCard.choices ?? rawCard.opsi;
   let options: string[] | undefined = undefined;
   if (Array.isArray(rawOpts)) {
     const cleaned = rawOpts.map(o => String(o).trim()).filter(Boolean);
@@ -248,9 +259,10 @@ function normalizeCard(rawCard: Record<string, unknown>, index: number): Flashca
   const explanation = rawCard.explanation ?? rawCard.pembahasan ?? rawCard.penjelasan ?? rawCard.alasan;
 
   // Explicit or inferred item type
-  const rawType = String(rawCard.type ?? rawCard.tipe ?? rawCard.kind ?? '').toLowerCase();
-  let type: 'flashcard' | 'quiz' = 'flashcard';
-  if (rawType === 'quiz' || rawType === 'kuis') {
+  let type: Flashcard['type'] = 'flashcard';
+  if (rawType === 'handwriting') {
+    type = 'handwriting';
+  } else if (rawType === 'quiz' || rawType === 'kuis') {
     type = 'quiz';
   } else if (rawType === 'flashcard' || rawType === 'kartu') {
     type = 'flashcard';
@@ -271,6 +283,7 @@ function normalizeCard(rawCard: Record<string, unknown>, index: number): Flashca
 }
 
 export interface ParsedDeckResult {
+  language?: string;
   title?: string;
   description?: string;
   category?: string;
@@ -330,6 +343,7 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
 
         if (cards.length > 0) {
           decks.push({
+            language: typeof rawDeck.language === 'string' ? rawDeck.language.trim() || undefined : undefined,
             id: rawDeck.id || `deck-${Date.now()}-${dIdx}`,
             title: String(rawDeck.title || `Dek Impor ${dIdx + 1}`).trim(),
             description: String(rawDeck.description || '').trim(),
@@ -406,6 +420,7 @@ export function parseFlexibleDeckJson(jsonString: string): FlexibleParseResult {
     return {
       type: 'deck',
       deck: {
+        language: typeof rawObj.language === 'string' ? rawObj.language.trim() || undefined : undefined,
         title: rawObj.title ? String(rawObj.title).trim() : undefined,
         description: rawObj.description ? String(rawObj.description).trim() : undefined,
         category: rawObj.category ? String(rawObj.category).trim() : undefined,
@@ -427,6 +442,7 @@ export function importDecksFromJson(jsonString: string): Deck[] {
 
   if (result.type === 'deck') {
     const singleDeck: Deck = {
+      language: result.deck.language,
       id: `deck-${Date.now()}`,
       title: result.deck.title || 'Dek Baru Impor',
       description: result.deck.description || '',

@@ -7,6 +7,7 @@ import { BottomNav } from './components/BottomNav';
 import { DeckList } from './components/DeckList';
 import { FlashcardViewer } from './components/FlashcardViewer';
 import { QuizViewer } from './components/QuizViewer';
+import { HandwritingViewer } from './components/HandwritingViewer';
 import { DeckEditor } from './components/DeckEditor';
 import { ImportExportModal } from './components/ImportExportModal';
 import { StatsModal } from './components/StatsModal';
@@ -50,7 +51,7 @@ export function App() {
     return decks.find(d => d.id === activeDeckId) || decks[0] || null;
   }, [decks, activeDeckId]);
 
-  const handleSelectDeck = (deck: Deck, mode: 'flashcards' | 'quiz' | 'hybrid') => {
+  const handleSelectDeck = (deck: Deck, mode: 'flashcards' | 'quiz' | 'hybrid' | 'handwriting') => {
     setActiveDeckId(deck.id);
     navigate(mode);
   };
@@ -119,6 +120,7 @@ export function App() {
   };
 
   const handleImportDeckFromJson = (deckData: {
+    language?: string;
     title?: string;
     description?: string;
     category?: string;
@@ -126,6 +128,7 @@ export function App() {
     cards: Flashcard[];
   }) => {
     const newDeck: Deck = {
+      language: deckData.language,
       id: `deck-${Date.now()}`,
       title: deckData.title || 'Dek Baru Impor',
       description: deckData.description || '',
@@ -191,10 +194,15 @@ export function App() {
         {currentMode === 'quiz' && activeDeck && (
           <QuizViewer
             key={activeDeck.id}
-            deck={activeDeck}
+            deck={{ ...activeDeck, cards: activeDeck.cards.filter(c => c.type !== 'handwriting') }}
             onBack={() => navigate('deck-select')}
             onGoToFlashcards={() => navigate('flashcards')}
           />
+        )}
+
+        {currentMode === 'handwriting' && activeDeck && (
+          <HandwritingViewer key={activeDeck.id} deck={activeDeck}
+            onBack={() => navigate('deck-select')} onUpdateDeck={handleUpdateDeckFromStudy} />
         )}
 
         {currentMode === 'edit-deck' && (

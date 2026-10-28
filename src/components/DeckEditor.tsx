@@ -28,6 +28,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
   const [description, setDescription] = useState(deck?.description || '');
   const [category, setCategory] = useState(deck?.category || 'Umum');
   const [color, setColor] = useState(deck?.color || COLOR_PRESETS[0].value);
+  const [language, setLanguage] = useState(deck?.language);
   const [cards, setCards] = useState<Flashcard[]>(
     deck?.cards || [
       { id: 'c-1', front: '', back: '', hint: '', mastered: false },
@@ -86,12 +87,14 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
   };
 
   const handleImportFromModal = (deckData: {
+    language?: string;
     title?: string;
     description?: string;
     category?: string;
     color?: string;
     cards: Flashcard[];
   }) => {
+    setLanguage(deckData.language);
     if (deckData.title) setTitle(deckData.title);
     if (deckData.description) setDescription(deckData.description);
     if (deckData.category) setCategory(deckData.category);
@@ -118,6 +121,7 @@ export const DeckEditor: React.FC<DeckEditorProps> = ({
     }
 
     const newDeck: Deck = {
+      language,
       id: deck?.id || `deck-${Date.now()}`,
       title: title.trim(),
       description: description.trim(),

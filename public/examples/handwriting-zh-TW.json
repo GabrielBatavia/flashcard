@@ -1,0 +1,9 @@
+{
+  "title": "Latihan Menulis Mandarin",
+  "language": "zh-TW",
+  "category": "Bahasa",
+  "cards": [
+    { "type": "handwriting", "front": "Tulis karakter untuk 'kamu'", "back": "你", "hint": "nǐ" },
+    { "type": "handwriting", "front": "Tulis 'Saya suka minum teh'", "back": "我喜歡喝茶。", "hint": "wǒ xǐhuān hē chá" }
+  ]
+}
