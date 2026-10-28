@@ -16,6 +16,8 @@
 .writing-answer:lang(zh-TW) { font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif; }
 .handwriting-card .button { min-height: 44px; white-space: normal; }
 .handwriting-card button:disabled { opacity: .5; cursor: not-allowed; }
+.writing-mode-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.writing-mode-exit { position: fixed; top: calc(env(safe-area-inset-top, 0px) + .75rem); right: 1rem; z-index: 100; }
 
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

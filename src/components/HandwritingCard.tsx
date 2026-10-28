@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { RotateCcw, Trash2, Eye, Check, X, HelpCircle, Volume2 } from 'lucide-react';
 import type { Flashcard } from '../types';
@@ -14,8 +14,51 @@ export function HandwritingCard({ card, language, onRate, disabled = false }: {
 }) {
   const [strokes, setStrokes] = useState<Point[][]>([]);
   const [revealed, setRevealed] = useState(false);
+  const [writingMode, setWritingMode] = useState(false);
+  const padRef = useRef<SVGSVGElement>(null);
   const activePointer = useRef<number | null>(null);
   const rated = useRef(false);
+
+  useEffect(() => {
+    if (!writingMode) return;
+    const body = document.body;
+    const root = document.documentElement;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const saved = {
+      position: body.style.position, top: body.style.top, left: body.style.left,
+      width: body.style.width, overflow: body.style.overflow,
+      touchAction: body.style.touchAction, rootOverflow: root.style.overflow,
+      overscrollBehavior: root.style.overscrollBehavior,
+    };
+    Object.assign(body.style, {
+      position: 'fixed', top: `-${scrollY}px`, left: `-${scrollX}px`,
+      width: '100%', overflow: 'hidden', touchAction: 'none',
+    });
+    root.style.overflow = 'hidden';
+    root.style.overscrollBehavior = 'none';
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setWritingMode(false);
+    };
+    document.addEventListener('keydown', escape);
+    return () => {
+      Object.assign(body.style, {
+        position: saved.position, top: saved.top, left: saved.left,
+        width: saved.width, overflow: saved.overflow, touchAction: saved.touchAction,
+      });
+      root.style.overflow = saved.rootOverflow;
+      root.style.overscrollBehavior = saved.overscrollBehavior;
+      window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' });
+      document.removeEventListener('keydown', escape);
+    };
+  }, [writingMode]);
+
+  const toggleWritingMode = () => {
+    if (!writingMode) {
+      padRef.current?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+    setWritingMode(previous => !previous);
+  };
 
   const point = (event: PointerEvent<SVGSVGElement>): Point => {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -69,8 +112,16 @@ export function HandwritingCard({ card, language, onRate, disabled = false }: {
         ✍️ Tulis karakter/kalimat dengan jari, stylus, atau mouse di area bawah ini:
       </p>
 
+      <button type="button" className="button writing-mode-toggle"
+        aria-pressed={writingMode} disabled={disabled || revealed} onClick={toggleWritingMode}>
+        {writingMode ? 'Keluar Mode Menulis · Buka scroll' : 'Mode Menulis · Kunci scroll'}
+      </button>
+      {writingMode && <button type="button" className="button primary writing-mode-exit"
+        onClick={() => setWritingMode(false)}>Buka scroll</button>}
+
       {/* Drawing Pad (Canvas SVG) */}
       <svg
+        ref={padRef}
         className="writing-pad"
         viewBox="0 0 600 480"
         role="img"
@@ -151,6 +202,7 @@ export function HandwritingCard({ card, language, onRate, disabled = false }: {
           disabled={disabled}
           onClick={() => {
             activePointer.current = null;
+            setWritingMode(false);
             setRevealed(true);
           }}
         >
