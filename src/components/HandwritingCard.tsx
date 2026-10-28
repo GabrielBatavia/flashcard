@@ -14,6 +14,7 @@ export function HandwritingCard({ card, language, onRate, disabled = false }: {
 }) {
   const [strokes, setStrokes] = useState<Point[][]>([]);
   const [revealed, setRevealed] = useState(false);
+  const [verdict, setVerdict] = useState<'correct' | 'wrong' | null>(null);
   const [writingMode, setWritingMode] = useState(false);
   const padRef = useRef<SVGSVGElement>(null);
   const activePointer = useRef<number | null>(null);
@@ -81,11 +82,12 @@ export function HandwritingCard({ card, language, onRate, disabled = false }: {
   const rate = (correct: boolean) => {
     if (!revealed || rated.current || disabled) return;
     rated.current = true;
+    setVerdict(correct ? 'correct' : 'wrong');
     onRate(correct);
   };
 
   return (
-    <section className="handwriting-card" aria-label="Latihan menulis">
+    <section className="handwriting-card" data-verdict={verdict ?? undefined} aria-label="Latihan menulis">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold leading-snug">{card.front}</h2>
         <button

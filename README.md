@@ -38,7 +38,65 @@ Aplikasi web modern, cepat, dan responsif untuk belajar menggunakan **Flashcard 
 
 ---
 
-## Latihan menulis
+## Format JSON
+
+Impor materi dari **Impor JSON** pada halaman koleksi. Pilih **Format Panduan JSON** untuk menyalin contoh langsung dari aplikasi. Semua format memakai objek dek dengan judul dan daftar isi. Gunakan `cards` untuk satu jenis materi; gunakan `items` jika ingin menyusun materi campuran dalam urutan tertentu.
+
+### Flashcard
+
+Isi `front` sebagai pertanyaan atau istilah dan `back` sebagai jawabannya. `hint` bersifat opsional.
+
+```json
+{
+  "title": "Kosakata",
+  "cards": [
+    { "type": "flashcard", "front": "apple", "back": "apel", "hint": "Buah" }
+  ]
+}
+```
+
+### Kuis pilihan ganda
+
+Isi `question`, sedikitnya dua `options`, dan `answer` dengan teks jawaban benar atau huruf pilihan (`A`, `B`, `C`, atau `D`). `explanation` opsional. Kuis dapat memakai properti `questions`.
+
+```json
+{
+  "title": "Kuis kosakata",
+  "questions": [
+    { "question": "Apa arti apple?", "options": ["apel", "jeruk", "pir", "anggur"], "answer": "apel", "explanation": "Apple berarti apel." }
+  ]
+}
+```
+
+### Gabungan flashcard dan kuis
+
+Gunakan daftar `items`. Setiap item memakai `type` yang sesuai. Aplikasi mengikuti urutan item dalam JSON.
+
+```json
+{
+  "title": "Belajar campuran",
+  "items": [
+    { "type": "flashcard", "front": "apple", "back": "apel" },
+    { "type": "quiz", "question": "Apa arti apple?", "options": ["apel", "jeruk", "pir", "anggur"], "answer": "apel" }
+  ]
+}
+```
+
+### Handwriting Mandarin tradisional Taiwan
+
+Setiap kartu menulis memakai `type: "handwriting"`, `front` (instruksi), dan `back` (karakter atau kalimat yang harus ditulis). `hint` dapat berisi pinyin. Tambahkan `"language": "zh-TW"` pada tingkat dek untuk menandai konteks Mandarin tradisional Taiwan. Field bahasa ini opsional; isi jawaban ditampilkan apa adanya.
+
+```json
+{
+  "title": "Mandarin Taiwan",
+  "language": "zh-TW",
+  "cards": [
+    { "type": "handwriting", "front": "Tulis 'Saya suka minum teh'", "back": "我喜歡喝茶。", "hint": "wǒ xǐhuān hē chá" }
+  ]
+}
+```
+
+### Latihan menulis
 
 Pilih **Impor JSON → Contoh Menulis → Impor & Buat Dek Otomatis**, lalu buka **Latihan menulis** pada dek. Contoh siap impor tersedia di `public/examples/handwriting-zh-TW.json`.
 
@@ -46,6 +104,7 @@ Pilih **Impor JSON → Contoh Menulis → Impor & Buat Dek Otomatis**, lalu buka
 - `back` dapat berisi satu karakter, kata, atau kalimat. Konten tidak diterjemahkan atau dikonversi.
 - `language` opsional di tingkat dek. `"language": "zh-TW"` memilih konteks tampilan Mandarin tradisional Taiwan. Tanpa field ini, tampilan tetap netral. Bahasa lain juga dapat digunakan.
 - Tulis dengan jari, stylus, atau mouse. Urungkan goresan atau hapus semua sebelum membuka jawaban.
+- Gunakan **Acak soal** untuk mengacak soal yang belum dinilai. Skor soal yang sudah dikerjakan tetap dihitung. Latihan ulang seluruh dek juga memakai urutan acak.
 - Tekan **Mode Menulis · Kunci scroll** untuk menahan posisi halaman saat menulis di HP. Tekan **Buka scroll** untuk keluar. Membuka jawaban juga melepas kunci secara otomatis. Format JSON tidak perlu diubah.
 - Tekan **Lihat jawaban**, bandingkan dengan tulisan yang masih terlihat, lalu pilih **Benar** atau **Salah**. Tidak ada AI, OCR, atau pemeriksaan urutan goresan.
 - Nilai dan progres tersimpan di perangkat. Goresan hanya berlaku untuk soal aktif dan tidak disimpan setelah berpindah soal atau memuat ulang halaman.

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, RefreshCw, CheckCircle2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle2, RotateCcw, Shuffle } from 'lucide-react';
 import type { Deck, Flashcard, QuizQuestion } from '../types';
 import { HandwritingCard } from './HandwritingCard';
 import { saveQuizResult } from '../utils/storage';
 import { soundManager } from '../utils/sound';
 import confetti from 'canvas-confetti';
+import { useMotionStep } from './useMotionStep';
 
 export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
   deck: Deck;
@@ -15,6 +16,7 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
   const [results, setResults] = useState<QuizQuestion[]>([]);
   const [attempt, setAttempt] = useState(0);
   const rating = useRef(false);
+  const { ref: stageRef, run: changeStep, busy: isMoving } = useMotionStep(12);
   const card = cards[results.length];
   const correctCount = results.filter(result => result.isCorrect).length;
   const missed = cards.filter(item => results.some(result => result.cardId === item.id && !result.isCorrect));
@@ -28,6 +30,13 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
     setResults([]);
     setAttempt(previous => previous + 1);
     rating.current = false;
+  };
+
+  const shuffleRemaining = () => {
+    const completed = cards.slice(0, results.length);
+    const upcoming = cards.slice(results.length).sort(() => Math.random() - 0.5);
+    setCards([...completed, ...upcoming]);
+    setAttempt(previous => previous + 1);
   };
 
   const rate = (correct: boolean) => {
@@ -95,11 +104,16 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
           <ArrowLeft size={16} />
           <span>Kembali ke Koleksi</span>
         </button>
-        <span className="text-xs font-bold text-slate-500">
-          {deck.title}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-bold text-slate-500 truncate">{deck.title}</span>
+          {card && <button type="button" className="button text-xs font-semibold flex items-center gap-1.5 shrink-0"
+            disabled={isMoving} onClick={() => { void changeStep(shuffleRemaining); }} title="Acak urutan soal yang belum dikerjakan">
+            <Shuffle size={15} /><span>Acak soal</span>
+          </button>}
+        </div>
       </div>
 
+      <div ref={stageRef} aria-busy={isMoving} inert={isMoving}>
       {cards.length === 0 ? (
         <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-3">
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -132,12 +146,13 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
             key={`${attempt}-${card.id}`}
             card={card}
             language={deck.language}
-            onRate={rate}
+            disabled={isMoving}
+            onRate={correct => { void changeStep(() => rate(correct)); }}
           />
         </>
       ) : (
         /* Completion Screen */
-        <section className="handwriting-card p-6 text-center space-y-4">
+        <section className="handwriting-card completion-screen p-6 text-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-white flex items-center justify-center text-3xl mx-auto shadow-lg shadow-emerald-500/20">
             <CheckCircle2 size={32} />
           </div>
@@ -160,7 +175,7 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
             {missed.length > 0 && (
               <button
                 className="button primary w-full py-3 text-xs font-bold flex items-center justify-center gap-2"
-                onClick={() => restart(missed)}
+                onClick={() => { void changeStep(() => restart(missed)); }}
               >
                 <RotateCcw size={16} />
                 <span>Ulangi {missed.length} Karakter yang Salah</span>
@@ -168,7 +183,7 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
             )}
             <button
               className="button w-full py-3 text-xs font-semibold flex items-center justify-center gap-2"
-              onClick={() => restart(deck.cards.filter(item => item.type === 'handwriting'))}
+              onClick={() => { void changeStep(() => restart(deck.cards.filter(item => item.type === 'handwriting').sort(() => Math.random() - 0.5))); }}
             >
               <RefreshCw size={16} />
               <span>Latihan Semua dari Awal</span>
@@ -179,6 +194,7 @@ export function HandwritingViewer({ deck, onBack, onUpdateDeck }: {
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }

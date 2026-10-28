@@ -18,6 +18,14 @@
 .handwriting-card button:disabled { opacity: .5; cursor: not-allowed; }
 .writing-mode-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .writing-mode-exit { position: fixed; top: calc(env(safe-area-inset-top, 0px) + .75rem); right: 1rem; z-index: 100; }
+.handwriting-card { transition: border-color 180ms ease, box-shadow 180ms ease; }
+.handwriting-card[data-verdict="correct"] { border-color: #059669; box-shadow: 0 0 0 3px #05966925; }
+.handwriting-card[data-verdict="wrong"] { border-color: #e11d48; box-shadow: 0 0 0 3px #e11d4825; }
+.writing-comparison { animation: writing-reveal 300ms var(--ease); }
+.writing-answer { animation: writing-reveal 360ms var(--ease); }
+.writing-viewer .button { transition: transform 160ms var(--ease), background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.writing-viewer .button:active:not(:disabled) { transform: scale(.97); }
+@keyframes writing-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
