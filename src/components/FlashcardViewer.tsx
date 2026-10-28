@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { 
   ArrowLeft, RotateCw, ChevronLeft, ChevronRight, Shuffle, 
   Volume2, HelpCircle, Check, X, ListChecks, RefreshCw,
-  CheckCircle2, XCircle, Zap, BookOpen
+  CheckCircle2, XCircle, Zap, BookOpen, Pencil
 } from 'lucide-react';
 import type { Deck } from '../types';
 import { soundManager } from '../utils/sound';
@@ -18,7 +18,7 @@ interface FlashcardViewerProps {
   onStartQuiz: () => void;
 }
 
-type FilterMode = 'all' | 'flashcard' | 'quiz' | 'unmastered';
+type FilterMode = 'all' | 'flashcard' | 'quiz' | 'handwriting' | 'unmastered';
 
 export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   deck,
@@ -27,7 +27,12 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
   onUpdateDeck,
   onStartQuiz,
 }) => {
-  const [filterMode, setFilterMode] = useState<FilterMode>(initialFilter);
+  const [filterMode, setFilterMode] = useState<FilterMode>(() => {
+    if (deck.cards.length > 0 && deck.cards.every(c => c.type === 'handwriting')) {
+      return 'all';
+    }
+    return initialFilter || 'all';
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -47,8 +52,14 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       list = list.filter(c => c.type !== 'handwriting' && !(c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)));
     } else if (filterMode === 'quiz') {
       list = list.filter(c => c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2));
+    } else if (filterMode === 'handwriting') {
+      list = list.filter(c => c.type === 'handwriting');
     } else if (filterMode === 'unmastered') {
       list = list.filter(c => !c.mastered);
+    }
+    // Safety fallback: if filter resulted in 0 cards but deck has cards, show all cards
+    if (list.length === 0 && deck.cards.length > 0 && filterMode !== 'unmastered') {
+      return deck.cards;
     }
     return list;
   }, [deck.cards, filterMode]);
@@ -57,11 +68,15 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
     return deck.cards.some(c => c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2));
   }, [deck.cards]);
 
-  const hasFlashcardItems = useMemo(() => {
-    return deck.cards.some(c => !(c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)));
+  const hasWritingItems = useMemo(() => {
+    return deck.cards.some(c => c.type === 'handwriting');
   }, [deck.cards]);
 
-  const isHybridDeck = hasQuizItems && hasFlashcardItems;
+  const hasFlashcardItems = useMemo(() => {
+    return deck.cards.some(c => c.type !== 'handwriting' && !(c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)));
+  }, [deck.cards]);
+
+  const isHybridDeck = (hasQuizItems && hasFlashcardItems) || (hasWritingItems && (hasFlashcardItems || hasQuizItems));
 
   const currentCard = cards[currentIndex];
   const isCurrentWriting = currentCard?.type === 'handwriting';
@@ -321,8 +336,9 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
             aria-label="Filter alur belajar"
           >
             <option value="all">{isHybridDeck ? '⚡ Alur Gabungan' : 'Semua Kartu'}</option>
-            {isHybridDeck && <option value="flashcard">🃏 Hanya Flashcard</option>}
-            {isHybridDeck && <option value="quiz">🎯 Hanya Kuis</option>}
+            {hasWritingItems && <option value="handwriting">✍️ Hanya Menulis</option>}
+            {hasFlashcardItems && <option value="flashcard">🃏 Hanya Flashcard</option>}
+            {hasQuizItems && <option value="quiz">🎯 Hanya Kuis</option>}
             <option value="unmastered">⚠️ Perlu Review</option>
           </select>
         </div>
@@ -330,7 +346,7 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
 
       {/* Quick Mode Toggle for Hybrid Decks */}
       {isHybridDeck && (
-        <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800/80 rounded-2xl border border-slate-300/60 dark:border-slate-700/60 mb-3 text-xs">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800/80 rounded-2xl border border-slate-300/60 dark:border-slate-700/60 mb-3 text-xs overflow-x-auto">
           <button
             type="button"
             onClick={() => {
@@ -351,46 +367,72 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
             <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
             <span>Gabungan</span>
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (filterMode === 'flashcard') return;
-              void changeCard(() => {
-                setFilterMode('flashcard');
-                setCurrentIndex(0);
-                setIsFlipped(false);
-                setIsFinished(false);
-              });
-            }}
-            className={`flex-1 py-1.5 px-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
-              filterMode === 'flashcard'
-                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Flashcard</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (filterMode === 'quiz') return;
-              void changeCard(() => {
-                setFilterMode('quiz');
-                setCurrentIndex(0);
-                setIsFlipped(false);
-                setIsFinished(false);
-              });
-            }}
-            className={`flex-1 py-1.5 px-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
-              filterMode === 'quiz'
-                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <ListChecks className="w-3.5 h-3.5" />
-            <span>Kuis</span>
-          </button>
+          {hasWritingItems && (
+            <button
+              type="button"
+              onClick={() => {
+                if (filterMode === 'handwriting') return;
+                void changeCard(() => {
+                  setFilterMode('handwriting');
+                  setCurrentIndex(0);
+                  setIsFlipped(false);
+                  setIsFinished(false);
+                });
+              }}
+              className={`flex-1 py-1.5 px-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+                filterMode === 'handwriting'
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Pencil className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Menulis</span>
+            </button>
+          )}
+          {hasFlashcardItems && (
+            <button
+              type="button"
+              onClick={() => {
+                if (filterMode === 'flashcard') return;
+                void changeCard(() => {
+                  setFilterMode('flashcard');
+                  setCurrentIndex(0);
+                  setIsFlipped(false);
+                  setIsFinished(false);
+                });
+              }}
+              className={`flex-1 py-1.5 px-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+                filterMode === 'flashcard'
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Flashcard</span>
+            </button>
+          )}
+          {hasQuizItems && (
+            <button
+              type="button"
+              onClick={() => {
+                if (filterMode === 'quiz') return;
+                void changeCard(() => {
+                  setFilterMode('quiz');
+                  setCurrentIndex(0);
+                  setIsFlipped(false);
+                  setIsFinished(false);
+                });
+              }}
+              className={`flex-1 py-1.5 px-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all ${
+                filterMode === 'quiz'
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <ListChecks className="w-3.5 h-3.5" />
+              <span>Kuis</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -398,7 +440,11 @@ export const FlashcardViewer: React.FC<FlashcardViewerProps> = ({
       <div className="mb-4">
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
           <span className="flex items-center gap-1.5">
-            {isCurrentQuiz ? (
+            {isCurrentWriting ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                <Pencil className="w-3.5 h-3.5" /> Latihan Menulis {currentIndex + 1}
+              </span>
+            ) : isCurrentQuiz ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                 <ListChecks className="w-3.5 h-3.5" /> Soal Kuis {currentIndex + 1}
               </span>

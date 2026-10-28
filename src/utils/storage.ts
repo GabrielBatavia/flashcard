@@ -6,12 +6,17 @@ const STORAGE_KEY_HISTORY = 'flashquiz_quiz_history_v1';
 const STORAGE_KEY_THEME = 'flashquiz_theme_mode';
 
 export const SAMPLE_HANDWRITING_JSON = JSON.stringify({
-  title: 'Latihan Menulis Mandarin',
+  title: 'Menulis ㄅㄆㄇㄈ: Inisial, Finals & Zhuyin Taiwan',
+  description: 'Dek latihan menulis simbol Zhuyin Taiwan, Pinyin, dan Hanzi tradisional',
   language: 'zh-TW',
   category: 'Bahasa',
   cards: [
-    { type: 'handwriting', front: "Tulis karakter untuk 'kamu'", back: '你', hint: 'nǐ' },
-    { type: 'handwriting', front: "Tulis 'Saya suka minum teh'", back: '我喜歡喝茶。', hint: 'wǒ xǐhuān hē chá' },
+    { type: 'handwriting', front: "[1/21] Tulis Zhuyin untuk inisial Pinyin: b", back: "ㄅ", hint: "01 Inisial • tidak beraspirasi; pasangannya ㄆ = p" },
+    { type: 'handwriting', front: "[2/21] Tulis Zhuyin untuk inisial Pinyin: p", back: "ㄆ", hint: "01 Inisial • beraspirasi; pasangannya ㄅ = b" },
+    { type: 'handwriting', front: "[3/21] Tulis Zhuyin untuk inisial Pinyin: m", back: "ㄇ", hint: "01 Inisial • nasal m" },
+    { type: 'handwriting', front: "Tulis Hanzi tradisional: kamu (nǐ)", back: "你", hint: "07 Bonus Hanzi tradisional 繁體中文" },
+    { type: 'handwriting', front: "Tulis Hanzi tradisional: saya (wǒ)", back: "我", hint: "07 Bonus Hanzi tradisional 繁體中文" },
+    { type: 'handwriting', front: "Tulis kalimat: 'Saya suka minum teh'", back: "我喜歡喝茶。", hint: "wǒ xǐhuān hē chá (繁體)" }
   ],
 }, null, 2);
 

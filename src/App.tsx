@@ -219,12 +219,13 @@ export function App() {
         <BottomNav
           currentMode={currentMode}
           onNavigate={mode => {
-            if ((mode === 'flashcards' || mode === 'quiz' || mode === 'hybrid') && !activeDeckId && decks.length > 0) {
+            if ((mode === 'flashcards' || mode === 'quiz' || mode === 'hybrid' || mode === 'handwriting') && !activeDeckId && decks.length > 0) {
               setActiveDeckId(decks[0].id);
             }
             navigate(mode);
           }}
           hasActiveDeck={Boolean(activeDeck)}
+          activeDeckIsWriting={Boolean(activeDeck && activeDeck.cards.some(c => c.type === 'handwriting') && !activeDeck.cards.some(c => c.type !== 'handwriting'))}
           onNewDeck={handleCreateDeck}
         />
       )}

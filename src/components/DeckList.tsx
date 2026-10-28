@@ -69,7 +69,8 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
           const quizCount = deck.cards.filter(c => c.type === 'quiz' || (Array.isArray(c.options) && c.options.length >= 2)).length;
           const writingCount = deck.cards.filter(c => c.type === 'handwriting').length;
           const flashcardCount = deck.cards.length - quizCount - writingCount;
-          const isHybrid = quizCount > 0 && flashcardCount > 0;
+          const isPureWriting = writingCount > 0 && flashcardCount === 0 && quizCount === 0;
+          const isHybrid = !isPureWriting && ((quizCount > 0 && flashcardCount > 0) || (writingCount > 0 && (flashcardCount > 0 || quizCount > 0)));
           return (
             <article className="deck-card" key={deck.id} style={{ animationDelay: `${Math.min(index, 5) * 40}ms` }}>
               <div className="deck-topline"><span className={`deck-symbol bg-gradient-to-br ${deck.color || 'from-blue-500 to-cyan-600'}`}><Layers size={23} /></span><span className="deck-category">{deck.category || 'Umum'}</span>
@@ -79,8 +80,14 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
               </div>
               <div className="deck-copy">
                 <span className="deck-index">
-                  {isHybrid 
-                    ? `${flashcardCount} Kartu • ${quizCount} Kuis (Gabungan)` 
+                  {isPureWriting
+                    ? `✍️ ${writingCount} Latihan Menulis${deck.language === 'zh-TW' ? ' Mandarin (繁體)' : ''}`
+                    : isHybrid
+                    ? [
+                        flashcardCount > 0 ? `${flashcardCount} Kartu` : null,
+                        quizCount > 0 ? `${quizCount} Kuis` : null,
+                        writingCount > 0 ? `${writingCount} Menulis` : null,
+                      ].filter(Boolean).join(' • ') + ' (Gabungan)'
                     : quizCount > 0 
                     ? `${quizCount} Soal Kuis` 
                     : `${deck.cards.length} kartu`}
@@ -89,14 +96,30 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
                 <p>{deck.description || 'Materi siap untuk dipelajari.'}</p>
               </div>
               <div className="deck-progress"><div><span>{count} materi dipahami</span><span>{progress}%</span></div><progress max="100" value={progress} aria-label={`Pemahaman ${deck.title}`} /></div>
-              {writingCount > 0 && <button className="button primary w-full mb-3" onClick={() => onSelectDeck(deck, 'handwriting')}><Pencil size={17} />Latihan menulis ({writingCount})</button>}
-              {isHybrid ? (
+              {isPureWriting ? (
+                <div className="deck-actions">
+                  <button 
+                    className="study-button" 
+                    onClick={() => onSelectDeck(deck, 'handwriting')}
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(8, 97, 206, 0.15), rgba(16, 185, 129, 0.2))',
+                      color: 'var(--ink)',
+                      border: '1px solid rgba(16, 185, 129, 0.45)',
+                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.12)'
+                    }}
+                  >
+                    <Pencil size={17} className="text-emerald-500 shrink-0" />
+                    <span className="font-bold">Mulai Latihan Menulis ({writingCount})</span>
+                    <ArrowUpRight size={17} className="ml-auto opacity-70" />
+                  </button>
+                </div>
+              ) : isHybrid ? (
                 <div className="deck-actions-hybrid">
                   <button 
                     className="hybrid-primary-btn" 
                     disabled={!deck.cards.length} 
                     onClick={() => onSelectDeck(deck, 'hybrid')}
-                    title="Mulai Mode Gabungan: Flashcard dan Kuis sesuai urutan alur"
+                    title="Mulai Mode Gabungan: Flashcard, Kuis, dan Menulis sesuai urutan alur"
                   >
                     <div className="flex items-center gap-2">
                       <Zap size={17} className="text-amber-500 fill-amber-500 shrink-0" />
@@ -105,33 +128,46 @@ export function DeckList({ decks, onSelectDeck, onEditDeck, onCreateDeck, onDele
                     <span className="hybrid-tag">Alur Campuran</span>
                     <ArrowUpRight size={17} className="arrow-icon ml-auto opacity-70" />
                   </button>
-                  <div className="deck-sub-actions">
-                    <button 
-                      className="sub-action-btn" 
-                      disabled={flashcardCount === 0} 
-                      onClick={() => onSelectDeck(deck, 'flashcards')}
-                      title="Pelajari hanya kartu Flashcard"
-                    >
-                      <BookOpen size={15} />
-                      <span>Flashcard ({flashcardCount})</span>
-                    </button>
-                    <button 
-                      className="sub-action-btn" 
-                      disabled={quizCount === 0} 
-                      onClick={() => onSelectDeck(deck, 'quiz')}
-                      title="Kerjakan hanya Kuis"
-                    >
-                      <ListChecks size={15} />
-                      <span>Kuis ({quizCount})</span>
-                    </button>
+                  <div className="deck-sub-actions" style={{ gridTemplateColumns: writingCount > 0 && flashcardCount > 0 && quizCount > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' }}>
+                    {writingCount > 0 && (
+                      <button 
+                        className="sub-action-btn" 
+                        onClick={() => onSelectDeck(deck, 'handwriting')}
+                        title="Kerjakan hanya Latihan Menulis"
+                      >
+                        <Pencil size={15} className="text-emerald-500" />
+                        <span>Menulis ({writingCount})</span>
+                      </button>
+                    )}
+                    {flashcardCount > 0 && (
+                      <button 
+                        className="sub-action-btn" 
+                        onClick={() => onSelectDeck(deck, 'flashcards')}
+                        title="Pelajari hanya kartu Flashcard"
+                      >
+                        <BookOpen size={15} />
+                        <span>Kartu ({flashcardCount})</span>
+                      </button>
+                    )}
+                    {quizCount > 0 && (
+                      <button 
+                        className="sub-action-btn" 
+                        disabled={quizCount === 0} 
+                        onClick={() => onSelectDeck(deck, 'quiz')}
+                        title="Kerjakan hanya Kuis"
+                      >
+                        <ListChecks size={15} />
+                        <span>Kuis ({quizCount})</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="deck-actions">
-                  <button className="study-button" disabled={!flashcardCount} onClick={() => onSelectDeck(deck, 'flashcards')}>
+                  <button className="study-button" disabled={!deck.cards.length} onClick={() => onSelectDeck(deck, 'flashcards')}>
                     <BookOpen size={17} />Pelajari<ArrowUpRight size={17} />
                   </button>
-                  <button className="quiz-button" disabled={deck.cards.length - writingCount < 2} title={deck.cards.length - writingCount < 2 ? 'Tambahkan minimal 2 kartu non-menulis untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
+                  <button className="quiz-button" disabled={deck.cards.length < 2} title={deck.cards.length < 2 ? 'Tambahkan minimal 2 kartu untuk kuis' : 'Mulai kuis'} onClick={() => onSelectDeck(deck, 'quiz')}>
                     <ListChecks size={17} />Kuis
                   </button>
                 </div>

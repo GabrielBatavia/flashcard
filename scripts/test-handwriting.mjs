@@ -11,7 +11,8 @@ const { parseFlexibleDeckJson, importDecksFromJson, exportDecksToJson, SAMPLE_HA
 const sample = parseFlexibleDeckJson(SAMPLE_HANDWRITING_JSON);
 assert.equal(sample.type, 'deck');
 assert.equal(sample.deck.language, 'zh-TW');
-assert.equal(sample.deck.cards[1].back, '我喜歡喝茶。');
+assert.equal(sample.deck.cards[1].back, 'ㄆ');
+assert.equal(sample.deck.cards[sample.deck.cards.length - 1].back, '我喜歡喝茶。');
 assert.ok(sample.deck.cards.every(card => card.type === 'handwriting' && !card.options));
 const restored = importDecksFromJson(exportDecksToJson(importDecksFromJson(SAMPLE_HANDWRITING_JSON)));
 assert.equal(restored[0].language, 'zh-TW');
